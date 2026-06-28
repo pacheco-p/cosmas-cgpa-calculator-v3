@@ -152,3 +152,65 @@ def show():
             st.success(
                 "Result saved successfully."
             )
+            # ==========================
+# GPA
+# ==========================
+
+total_cu = df["Credit Unit"].sum()
+total_qp = df["Quality Point"].sum()
+
+gpa = total_qp / total_cu
+
+st.metric("Semester GPA", f"{gpa:.2f}")
+
+st.divider()
+
+st.subheader("Previous Academic Record")
+
+previous_units = st.number_input(
+    "Previous Total Credit Units",
+    min_value=0,
+    value=0
+)
+
+previous_qp = st.number_input(
+    "Previous Quality Points",
+    min_value=0.0,
+    value=0.0,
+    step=0.01
+)
+
+current_qp = total_qp
+current_units = total_cu
+
+overall_qp = previous_qp + current_qp
+overall_units = previous_units + current_units
+
+if overall_units > 0:
+    cgpa = overall_qp / overall_units
+else:
+    cgpa = gpa
+
+st.metric("Current CGPA", f"{cgpa:.2f}")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Current Credit Units", current_units)
+
+with col2:
+    st.metric("Total Credit Units", overall_units)
+
+if st.button("💾 Save Result", use_container_width=True):
+
+    database.save_result(
+        st.session_state.username,
+        session,
+        semester,
+        round(gpa, 2),
+        round(cgpa, 2)
+    )
+
+    st.success("Result saved successfully.")
+
+    st.session_state.courses = []
