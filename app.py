@@ -6,7 +6,7 @@ import history
 import profile
 
 # =====================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # =====================================
 
 st.set_page_config(
@@ -31,28 +31,27 @@ if "username" not in st.session_state:
 
 if not st.session_state.logged_in:
 
-    left, center, right = st.columns([1,2,1])
+    left, center, right = st.columns([1, 2, 1])
 
     with center:
 
         st.title("🎓 Cosmas CGPA Calculator")
         st.caption("Calculate your GPA & CGPA with ease.")
 
-        login_tab, signup_tab = st.tabs([
-            "🔑 Login",
-            "📝 Create Account"
-        ])
+        login_tab, signup_tab = st.tabs(
+            ["🔑 Login", "📝 Create Account"]
+        )
 
         # ---------------- LOGIN ----------------
 
         with login_tab:
 
-            login_username = st.text_input(
+            username = st.text_input(
                 "Username",
                 key="login_username"
             )
 
-            login_password = st.text_input(
+            password = st.text_input(
                 "Password",
                 type="password",
                 key="login_password"
@@ -63,15 +62,11 @@ if not st.session_state.logged_in:
                 use_container_width=True
             ):
 
-                if auth.login(
-                    login_username,
-                    login_password
-                ):
+                if auth.login(username, password):
 
                     st.session_state.logged_in = True
-                    st.session_state.username = login_username
+                    st.session_state.username = username
 
-                    st.success("Login Successful!")
                     st.rerun()
 
                 else:
@@ -80,21 +75,21 @@ if not st.session_state.logged_in:
                         "Invalid username or password."
                     )
 
-        # ---------------- SIGNUP ----------------
+        # ---------------- SIGN UP ----------------
 
         with signup_tab:
 
-            signup_username = st.text_input(
+            new_username = st.text_input(
                 "Username",
                 key="signup_username"
             )
 
-            signup_email = st.text_input(
+            email = st.text_input(
                 "Email",
                 key="signup_email"
             )
 
-            signup_password = st.text_input(
+            new_password = st.text_input(
                 "Password",
                 type="password",
                 key="signup_password"
@@ -111,7 +106,7 @@ if not st.session_state.logged_in:
                 use_container_width=True
             ):
 
-                if signup_password != confirm_password:
+                if new_password != confirm_password:
 
                     st.error(
                         "Passwords do not match."
@@ -120,9 +115,9 @@ if not st.session_state.logged_in:
                 else:
 
                     success, message = auth.register(
-                        signup_username,
-                        signup_email,
-                        signup_password
+                        new_username,
+                        email,
+                        new_password
                     )
 
                     if success:
@@ -143,42 +138,3 @@ else:
 
     st.sidebar.success(
         f"Welcome, {st.session_state.username}"
-    )
-
-    page = st.sidebar.radio(
-        "Navigation",
-        [
-            "🏠 Dashboard",
-            "🎓 Calculator",
-            "📊 History",
-            "👤 Profile"
-        ]
-    )
-
-    st.sidebar.divider()
-
-    if st.sidebar.button(
-        "🚪 Logout",
-        use_container_width=True
-    ):
-
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-
-        st.rerun()
-
-    # =====================================
-    # PAGE ROUTING
-    # =====================================
-
-    if page == "🏠 Dashboard":
-        dashboard.show()
-
-    elif page == "🎓 Calculator":
-        calculator.show()
-
-    elif page == "📊 History":
-        history.show()
-
-    elif page == "👤 Profile":
-        profile.show()
