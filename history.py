@@ -1,38 +1,128 @@
-# history.py
 import streamlit as st
 import pandas as pd
-import io
 import database
 
+
 def show():
-    st.title("📊 Calculation History")
-    history=database.get_history(st.session_state.username)
-    if not history:
-        st.info("No saved calculations.")
+
+    st.title("📊 Result History")
+
+    results = database.get_results(
+        st.session_state.username
+    )
+
+    if not results:
+
+        st.info(
+            "No saved results yet."
+        )
+
         return
-    df=pd.DataFrame(history,columns=[
-        "ID","Session","Semester","Semester GPA","CGPA",
-        "Credit Units","Quality Points","Classification","Date"
-    ])
-    st.dataframe(df,use_container_width=True,hide_index=True)
 
-    st.subheader("View Courses")
-    rid=st.selectbox("Select Record",df["ID"])
-    if st.button("Show Courses"):
-        c=database.get_courses(int(rid))
-        if c:
-            cdf=pd.DataFrame(c,columns=[
-                "Course","Credit Units","Grade","Grade Point","Quality Points"
-            ])
-            st.dataframe(cdf,use_container_width=True,hide_index=True)
-        else:
-            st.info("No courses found.")
+    df = pd.DataFrame(
 
-    if st.button("🗑 Delete Selected Record"):
-        database.delete_history(int(rid))
-        st.success("Deleted.")
+        results,
+
+        columns=[
+            "ID",
+            "Username",
+            "Session",
+            "Semester",
+            "GPA",
+            "CGPA",
+            "Date"
+        ]
+
+    )
+
+    st.subheader("Saved Results")
+
+    st.dataframe(
+
+        df[
+            [
+                "Session",
+                "Semester",
+                "GPA",
+                "CGPA",
+                "Date"
+            ]
+        ],
+
+        use_container_width=True,
+
+        hide_index=True
+
+    )
+
+    st.divider()
+
+    # ==========================
+    # SEARCH
+    # ==========================
+
+    search = st.text_input(
+        "🔍 Search Session"
+    )
+
+    if search:
+
+        filtered = df[
+            df["Session"].str.contains(
+                search,
+                case=False
+            )
+        ]
+
+        st.dataframe(
+
+            filtered[
+                [
+                    "Session",
+                    "Semester",
+                    "GPA",
+                    "CGPA",
+                    "Date"
+                ]
+            ],
+
+            use_container_width=True,
+
+            hide_index=True
+
+        )
+
+    st.divider()
+
+    # ==========================
+    # DELETE RESULT
+    # ==========================
+
+    record = st.selectbox(
+
+        "Select Result",
+
+        df["ID"]
+
+    )
+
+    if st.button(
+        "🗑 Delete Result",
+        use_container_width=True
+    ):
+
+        database.delete_result(
+            int(record)
+        )
+
+        st.success(
+            "Result deleted successfully."
+        )
+
         st.rerun()
 
-    buf=io.BytesIO()
-    df.to_csv(buf,index=False)
-    st.download_button("📥 Download CSV",buf.getvalue(),"history.csv","text/csv")
+    st.divider()
+
+    # ==========================
+    # CGPA CHART
+    # ==========================
