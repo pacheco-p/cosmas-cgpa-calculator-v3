@@ -4,6 +4,7 @@ import dashboard
 import calculator
 import history
 import profile
+import admin
 
 # =====================================
 # PAGE CONFIG
