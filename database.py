@@ -1,3 +1,49 @@
+import sqlite3
+
+# ==========================================
+# DATABASE CONNECTION
+# ==========================================
+
+conn = sqlite3.connect("cgpa.db", check_same_thread=False)
+conn.row_factory = sqlite3.Row
+cursor = conn.cursor()
+
+# ==========================================
+# USERS TABLE
+# ==========================================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+
+    full_name TEXT,
+    matric_number TEXT,
+    department TEXT,
+    faculty TEXT,
+    level TEXT,
+    admission_year TEXT
+)
+""")
+
+# ==========================================
+# RESULTS TABLE
+# ==========================================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS results(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    session TEXT,
+    semester TEXT,
+    gpa REAL,
+    cgpa REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
 # ==========================================
 # COURSES TABLE
 # ==========================================
@@ -16,52 +62,53 @@ CREATE TABLE IF NOT EXISTS courses(
 
 conn.commit()
 
-
 # ==========================================
-# COURSE FUNCTIONS
+# USER FUNCTIONS
 # ==========================================
 
-def add_course(
-    department,
-    level,
-    semester,
-    course_code,
-    course_title,
-    credit_unit
-):
+def create_user(username, email, password):
     cursor.execute("""
-    INSERT INTO courses
-    (department,level,semester,course_code,course_title,credit_unit)
-    VALUES(?,?,?,?,?,?)
-    """,
-    (
-        department,
-        level,
-        semester,
-        course_code,
-        course_title,
-        credit_unit
-    ))
+    INSERT INTO users(username,email,password)
+    VALUES(?,?,?)
+    """, (username, email, password))
     conn.commit()
 
 
-def get_courses(
-    department,
-    level,
-    semester
-):
+def get_user(username):
     cursor.execute("""
     SELECT *
-    FROM courses
-    WHERE department=?
-    AND level=?
-    AND semester=?
-    ORDER BY course_code
-    """,
-    (
-        department,
-        level,
-        semester
-    ))
+    FROM users
+    WHERE username=?
+    """, (username,))
+    return cursor.fetchone()
 
-    return cursor.fetchall()
+
+def get_email(email):
+    cursor.execute("""
+    SELECT *
+    FROM users
+    WHERE email=?
+    """, (email,))
+    return cursor.fetchone()
+
+
+def update_profile(
+    username,
+    full_name,
+    matric_number,
+    department,
+    faculty,
+    level,
+    admission_year
+):
+    cursor.execute("""
+    UPDATE users
+    SET
+        full_name=?,
+        matric_number=?,
+        department=?,
+        faculty=?,
+        level=?,
+        admission_year=?
+    WHERE username=?
+    """,
