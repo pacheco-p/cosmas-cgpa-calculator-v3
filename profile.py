@@ -1,156 +1,123 @@
 import streamlit as st
-import pandas as pd
-import database
+import sqlite3
+
+conn = sqlite3.connect("cgpa.db", check_same_thread=False)
+cursor = conn.cursor()
 
 
 def show():
 
     st.title("👤 My Profile")
 
-    # ======================================
-    # USER INFORMATION
-    # ======================================
+    username = st.session_state.username
 
-    user = database.get_user(
-        st.session_state.username
+    cursor.execute("""
+        SELECT
+            username,
+            email,
+            full_name,
+            matric_number,
+            department,
+            faculty,
+            level,
+            admission_year
+        FROM users
+        WHERE username=?
+    """, (username,))
+
+    user = cursor.fetchone()
+
+    if not user:
+        st.error("User not found.")
+        return
+
+    username, email, full_name, matric_number, department, faculty, level, admission_year = user
+
+    st.subheader("Student Information")
+
+    full_name = st.text_input(
+        "Full Name",
+        value=full_name if full_name else ""
     )
 
-    if user:
-
-        st.subheader("Account Information")
-
-        st.write(f"**Username:** {user[1]}")
-        st.write(f"**Email:** {user[2]}")
-
-    st.divider()
-
-    # ======================================
-    # STATISTICS
-    # ======================================
-
-    stats = database.get_statistics(
-        st.session_state.username
+    matric_number = st.text_input(
+        "Matric Number",
+        value=matric_number if matric_number else ""
     )
 
-    total_saved = stats[0] if stats[0] else 0
-    highest = stats[1] if stats[1] else 0.00
-    average = stats[2] if stats[2] else 0.00
-
-    c1, c2, c3 = st.columns(3)
-
-    c1.metric(
-        "Saved Results",
-        total_saved
+    department = st.text_input(
+        "Department",
+        value=department if department else ""
     )
 
-    c2.metric(
-        "Highest CGPA",
-        f"{highest:.2f}"
+    faculty = st.text_input(
+        "Faculty",
+        value=faculty if faculty else ""
     )
 
-    c3.metric(
-        "Average CGPA",
-        f"{average:.2f}"
+    level = st.selectbox(
+        "Level",
+        [
+            "100 Level",
+            "200 Level",
+            "300 Level",
+            "400 Level",
+            "500 Level"
+        ],
+        index=[
+            "100 Level",
+            "200 Level",
+            "300 Level",
+            "400 Level",
+            "500 Level"
+        ].index(level) if level in [
+            "100 Level",
+            "200 Level",
+            "300 Level",
+            "400 Level",
+            "500 Level"
+        ] else 0
     )
 
-    st.divider()
-
-    # ======================================
-    # RECENT CALCULATIONS
-    # ======================================
-
-    history = database.get_history(
-        st.session_state.username
+    admission_year = st.text_input(
+        "Admission Year",
+        value=admission_year if admission_year else ""
     )
 
-    if history:
+    st.text_input(
+        "Email",
+        value=email,
+        disabled=True
+    )
 
-        df = pd.DataFrame(
+    st.text_input(
+        "Username",
+        value=username,
+        disabled=True
+    )
 
-            history,
+    if st.button("💾 Save Profile", use_container_width=True):
 
-            columns=[
-                "ID",
-                "Session",
-                "Semester",
-                "Semester GPA",
-                "CGPA",
-                "Credit Units",
-                "Quality Points",
-                "Classification",
-                "Date"
-            ]
+        cursor.execute("""
+            UPDATE users
+            SET
+                full_name=?,
+                matric_number=?,
+                department=?,
+                faculty=?,
+                level=?,
+                admission_year=?
+            WHERE username=?
+        """, (
+            full_name,
+            matric_number,
+            department,
+            faculty,
+            level,
+            admission_year,
+            username
+        ))
 
-        )
+        conn.commit()
 
-        st.subheader("Recent Calculations")
-
-        st.dataframe(
-
-            df.drop(columns=["ID"]).head(5),
-
-            use_container_width=True,
-
-            hide_index=True
-
-        )
-
-        st.divider()
-
-        st.subheader("CGPA Progress")
-
-        chart = df.iloc[::-1][["CGPA"]]
-
-        st.line_chart(chart)
-
-    else:
-
-        st.info(
-            "No saved calculations yet."
-        )
-
-    st.divider()
-
-    # ======================================
-    # QUICK SUMMARY
-    # ======================================
-
-    if history:
-
-        latest = df.iloc[0]
-
-        st.subheader("Latest Result")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.metric(
-                "Latest GPA",
-                f"{latest['Semester GPA']:.2f}"
-            )
-
-        with col2:
-            st.metric(
-                "Latest CGPA",
-                f"{latest['CGPA']:.2f}"
-            )
-
-        st.success(
-            f"Current Standing: {latest['Classification']}"
-        )
-
-    st.divider()
-
-    # ======================================
-    # LOGOUT
-    # ======================================
-
-    if st.button(
-        "🚪 Logout",
-        use_container_width=True
-    ):
-
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-
-        st.rerun()
+        st.success("Profile updated successfully!")
