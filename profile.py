@@ -1,58 +1,30 @@
 import streamlit as st
-import sqlite3
-
-conn = sqlite3.connect("cgpa.db", check_same_thread=False)
-cursor = conn.cursor()
-
+import auth
 
 def show():
 
     st.title("👤 My Profile")
 
-    username = st.session_state.username
-
-    cursor.execute("""
-        SELECT
-            username,
-            email,
-            full_name,
-            matric_number,
-            department,
-            faculty,
-            level,
-            admission_year
-        FROM users
-        WHERE username=?
-    """, (username,))
-
-    user = cursor.fetchone()
-
-    if not user:
-        st.error("User not found.")
-        return
-
-    username, email, full_name, matric_number, department, faculty, level, admission_year = user
-
-    st.subheader("Student Information")
+    user = auth.get_user(st.session_state.username)
 
     full_name = st.text_input(
         "Full Name",
-        value=full_name if full_name else ""
+        value=user["full_name"] if user["full_name"] else ""
     )
 
     matric_number = st.text_input(
         "Matric Number",
-        value=matric_number if matric_number else ""
+        value=user["matric_number"] if user["matric_number"] else ""
     )
 
     department = st.text_input(
         "Department",
-        value=department if department else ""
+        value=user["department"] if user["department"] else ""
     )
 
     faculty = st.text_input(
         "Faculty",
-        value=faculty if faculty else ""
+        value=user["faculty"] if user["faculty"] else ""
     )
 
     level = st.selectbox(
@@ -64,60 +36,43 @@ def show():
             "400 Level",
             "500 Level"
         ],
-        index=[
+        index=0 if not user["level"] else [
             "100 Level",
             "200 Level",
             "300 Level",
             "400 Level",
             "500 Level"
-        ].index(level) if level in [
-            "100 Level",
-            "200 Level",
-            "300 Level",
-            "400 Level",
-            "500 Level"
-        ] else 0
+        ].index(user["level"])
     )
 
     admission_year = st.text_input(
         "Admission Year",
-        value=admission_year if admission_year else ""
-    )
-
-    st.text_input(
-        "Email",
-        value=email,
-        disabled=True
-    )
-
-    st.text_input(
-        "Username",
-        value=username,
-        disabled=True
+        value=user["admission_year"] if user["admission_year"] else ""
     )
 
     if st.button("💾 Save Profile", use_container_width=True):
 
-        cursor.execute("""
-            UPDATE users
-            SET
-                full_name=?,
-                matric_number=?,
-                department=?,
-                faculty=?,
-                level=?,
-                admission_year=?
-            WHERE username=?
-        """, (
+        auth.update_profile(
+            st.session_state.username,
             full_name,
             matric_number,
             department,
             faculty,
             level,
-            admission_year,
-            username
-        ))
-
-        conn.commit()
+            admission_year
+        )
 
         st.success("Profile updated successfully!")
+
+    st.divider()
+
+    st.subheader("Profile Summary")
+
+    st.write(f"**Username:** {user['username']}")
+    st.write(f"**Email:** {user['email']}")
+    st.write(f"**Full Name:** {full_name}")
+    st.write(f"**Matric Number:** {matric_number}")
+    st.write(f"**Department:** {department}")
+    st.write(f"**Faculty:** {faculty}")
+    st.write(f"**Level:** {level}")
+    st.write(f"**Admission Year:** {admission_year}")
