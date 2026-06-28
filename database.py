@@ -3,9 +3,7 @@ import sqlite3
 conn = sqlite3.connect("cgpa.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# ==========================
-# USERS TABLE
-# ==========================
+# Create Users Table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,9 +19,7 @@ CREATE TABLE IF NOT EXISTS users(
 )
 """)
 
-# ==========================
-# RESULTS TABLE
-# ==========================
+# Create Results Table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS results(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,17 +35,10 @@ CREATE TABLE IF NOT EXISTS results(
 conn.commit()
 
 
-# ==========================
-# USER FUNCTIONS
-# ==========================
-
 def create_user(username, email, password):
     try:
         cursor.execute(
-            """
-            INSERT INTO users(username,email,password)
-            VALUES(?,?,?)
-            """,
+            "INSERT INTO users(username,email,password) VALUES(?,?,?)",
             (username, email, password)
         )
         conn.commit()
@@ -78,8 +67,45 @@ def update_profile(
     cursor.execute("""
         UPDATE users
         SET
-        full_name=?,
-        matric_number=?,
-        department=?,
-        faculty=?,
-        level=?,
+            full_name=?,
+            matric_number=?,
+            department=?,
+            faculty=?,
+            level=?,
+            admission_year=?
+        WHERE username=?
+    """, (
+        full_name,
+        matric_number,
+        department,
+        faculty,
+        level,
+        admission_year,
+        username
+    ))
+    conn.commit()
+
+
+def get_profile(username):
+    cursor.execute(
+        "SELECT * FROM users WHERE username=?",
+        (username,)
+    )
+    return cursor.fetchone()
+
+
+def save_result(username, session, semester, gpa, cgpa):
+    cursor.execute("""
+        INSERT INTO results(username, session, semester, gpa, cgpa)
+        VALUES (?, ?, ?, ?, ?)
+    """, (username, session, semester, gpa, cgpa))
+    conn.commit()
+
+
+def get_results(username):
+    cursor.execute("""
+        SELECT * FROM results
+        WHERE username=?
+        ORDER BY id DESC
+    """, (username,))
+    return cursor.fetchall()
