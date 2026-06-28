@@ -8,135 +8,119 @@ def show():
     st.title("🏠 Dashboard")
 
     st.success(
-        f"Welcome back, {st.session_state.username}! 👋"
+        f"Welcome, {st.session_state.username} 👋"
     )
 
-    # =====================================
-    # Statistics
-    # =====================================
-
-    stats = database.get_statistics(
+    results = database.get_results(
         st.session_state.username
     )
 
-    total_saved = stats[0] if stats[0] else 0
-    highest = stats[1] if stats[1] else 0.00
-    average = stats[2] if stats[2] else 0.00
+    if not results:
 
-    history = database.get_history(
-        st.session_state.username
+        st.info(
+            "No saved results yet."
+        )
+
+        return
+
+    df = pd.DataFrame(
+
+        results,
+
+        columns=[
+            "ID",
+            "Username",
+            "Session",
+            "Semester",
+            "GPA",
+            "CGPA",
+            "Date"
+        ]
+
     )
 
-    latest = history[0][4] if history else 0.00
+    latest = df.iloc[0]
 
-    c1, c2, c3, c4 = st.columns(4)
+    total_results = len(df)
 
-    c1.metric(
+    highest = df["CGPA"].max()
+
+    average = df["CGPA"].mean()
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric(
         "Saved Results",
-        total_saved
+        total_results
     )
 
-    c2.metric(
+    col2.metric(
         "Latest CGPA",
-        f"{latest:.2f}"
+        f"{latest['CGPA']:.2f}"
     )
 
-    c3.metric(
+    col3.metric(
         "Highest CGPA",
         f"{highest:.2f}"
     )
 
-    c4.metric(
+    col4.metric(
         "Average CGPA",
         f"{average:.2f}"
     )
 
     st.divider()
 
-    # =====================================
-    # Recent Calculations
-    # =====================================
+    st.subheader("Latest Results")
 
-    st.subheader("📋 Recent Calculations")
+    st.dataframe(
 
-    if history:
-
-        df = pd.DataFrame(
-
-            history,
-
-            columns=[
-                "ID",
+        df[
+            [
                 "Session",
                 "Semester",
-                "Semester GPA",
+                "GPA",
                 "CGPA",
-                "Credit Units",
-                "Quality Points",
-                "Classification",
                 "Date"
             ]
+        ],
 
-        )
+        use_container_width=True,
 
-        st.dataframe(
+        hide_index=True
 
-            df.drop(columns=["ID"]),
+    )
 
-            use_container_width=True,
+    st.divider()
 
-            hide_index=True
+    st.subheader("📈 CGPA Progress")
 
-        )
+    chart = df.iloc[::-1][["CGPA"]]
 
-        st.divider()
+    st.line_chart(chart)
 
-        # =====================================
-        # CGPA Progress
-        # =====================================
+    st.divider()
 
-        st.subheader("📈 CGPA Progress")
+    latest_cgpa = latest["CGPA"]
 
-        chart = df.iloc[::-1][["CGPA"]]
+    st.subheader("Academic Standing")
 
-        st.line_chart(chart)
+    if latest_cgpa >= 4.50:
 
-        st.divider()
+        st.success("🏆 First Class")
 
-        # =====================================
-        # Current Standing
-        # =====================================
+    elif latest_cgpa >= 3.50:
 
-        latest_class = df.iloc[0]["Classification"]
+        st.info("🥇 Second Class Upper")
 
-        st.subheader("🎯 Current Academic Standing")
+    elif latest_cgpa >= 2.40:
 
-        if "First Class" in latest_class:
+        st.warning("🥈 Second Class Lower")
 
-            st.success(
-                latest_class
-            )
+    elif latest_cgpa >= 1.50:
 
-        elif "Second Class Upper" in latest_class:
-
-            st.info(
-                latest_class
-            )
-
-        elif "Second Class Lower" in latest_class:
-
-            st.warning(
-                latest_class
-            )
-
-        else:
-
-            st.error(
-                latest_class
-            )
+        st.warning("🎓 Third Class")
 
     else:
 
-        st.info(
-            "No saved calculations yet."
-        )
+        st.error("⚠️ Pass")
