@@ -86,4 +86,113 @@ if not st.session_state.logged_in:
 
             email = st.text_input(
                 "Email",
-                key="
+                key="signup_email"
+            )
+
+            new_password = st.text_input(
+                "Password",
+                type="password",
+                key="signup_password"
+            )
+
+            confirm_password = st.text_input(
+                "Confirm Password",
+                type="password",
+                key="signup_confirm"
+            )
+
+            if st.button(
+                "Create Account",
+                use_container_width=True
+            ):
+
+                if new_password != confirm_password:
+
+                    st.error(
+                        "Passwords do not match."
+                    )
+
+                elif len(new_password) < 6:
+
+                    st.error(
+                        "Password must be at least 6 characters."
+                    )
+
+                else:
+
+                    success, message = auth.register(
+                        new_username,
+                        email,
+                        new_password
+                    )
+
+                    if success:
+
+                        st.success(message)
+
+                    else:
+
+                        st.error(message)
+
+# =====================================
+# MAIN APPLICATION
+# =====================================
+
+else:
+
+    st.sidebar.title("🎓 Cosmas CGPA")
+
+    st.sidebar.success(
+        f"Welcome, {st.session_state.username}"
+    )
+
+    page = st.sidebar.radio(
+
+        "Navigation",
+
+        [
+            "🏠 Dashboard",
+            "🎓 Calculator",
+            "📊 History",
+            "👤 Profile"
+        ]
+
+    )
+
+    st.sidebar.divider()
+
+    if st.sidebar.button(
+
+        "🚪 Logout",
+
+        use_container_width=True
+
+    ):
+
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+
+        if "courses" in st.session_state:
+            del st.session_state["courses"]
+
+        st.rerun()
+
+    # =====================================
+    # PAGE ROUTING
+    # =====================================
+
+    if page == "🏠 Dashboard":
+
+        dashboard.show()
+
+    elif page == "🎓 Calculator":
+
+        calculator.show()
+
+    elif page == "📊 History":
+
+        history.show()
+
+    elif page == "👤 Profile":
+
+        profile.show()
