@@ -1,24 +1,17 @@
 import sqlite3
 
-# ==========================================
-# DATABASE CONNECTION
-# ==========================================
-
 conn = sqlite3.connect("cgpa.db", check_same_thread=False)
-conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
-# ==========================================
+# ==========================
 # USERS TABLE
-# ==========================================
-
+# ==========================
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-
+    username TEXT UNIQUE,
+    email TEXT,
+    password TEXT,
     full_name TEXT,
     matric_number TEXT,
     department TEXT,
@@ -28,14 +21,13 @@ CREATE TABLE IF NOT EXISTS users(
 )
 """)
 
-# ==========================================
+# ==========================
 # RESULTS TABLE
-# ==========================================
-
+# ==========================
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS results(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
+    username TEXT,
     session TEXT,
     semester TEXT,
     gpa REAL,
@@ -44,51 +36,33 @@ CREATE TABLE IF NOT EXISTS results(
 )
 """)
 
-# ==========================================
-# COURSES TABLE
-# ==========================================
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS courses(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    department TEXT,
-    level TEXT,
-    semester TEXT,
-    course_code TEXT,
-    course_title TEXT,
-    credit_unit INTEGER
-)
-""")
-
 conn.commit()
 
-# ==========================================
+
+# ==========================
 # USER FUNCTIONS
-# ==========================================
+# ==========================
 
 def create_user(username, email, password):
-    cursor.execute("""
-    INSERT INTO users(username,email,password)
-    VALUES(?,?,?)
-    """, (username, email, password))
-    conn.commit()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO users(username,email,password)
+            VALUES(?,?,?)
+            """,
+            (username, email, password)
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
 
 
 def get_user(username):
-    cursor.execute("""
-    SELECT *
-    FROM users
-    WHERE username=?
-    """, (username,))
-    return cursor.fetchone()
-
-
-def get_email(email):
-    cursor.execute("""
-    SELECT *
-    FROM users
-    WHERE email=?
-    """, (email,))
+    cursor.execute(
+        "SELECT * FROM users WHERE username=?",
+        (username,)
+    )
     return cursor.fetchone()
 
 
@@ -102,13 +76,10 @@ def update_profile(
     admission_year
 ):
     cursor.execute("""
-    UPDATE users
-    SET
+        UPDATE users
+        SET
         full_name=?,
         matric_number=?,
         department=?,
         faculty=?,
         level=?,
-        admission_year=?
-    WHERE username=?
-    """,
