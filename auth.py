@@ -1,35 +1,34 @@
+import hashlib
 import database
 
 
-def register(username, email, password):
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-    if username == "":
-        return False, "Username cannot be empty."
 
-    if password == "":
-        return False, "Password cannot be empty."
+def signup(username, email, password):
 
-    success = database.create_user(
+    password = hash_password(password)
+
+    return database.create_user(
         username,
         email,
         password
     )
-
-    if success:
-        return True, "Account created successfully."
-
-    return False, "Username already exists."
 
 
 def login(username, password):
 
     user = database.get_user(username)
 
-    if user is None:
+    if not user:
         return False
 
-    # user[3] = password
-    if user[3] == password:
+    if user["password"] == hash_password(password):
         return True
 
     return False
+
+
+def get_user(username):
+    return database.get_user(username)
