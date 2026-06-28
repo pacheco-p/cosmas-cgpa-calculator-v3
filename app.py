@@ -26,14 +26,14 @@ if "username" not in st.session_state:
     st.session_state.username = ""
 
 # =====================================
-# LOGIN / SIGNUP PAGE
+# LOGIN / SIGNUP
 # =====================================
 
 if not st.session_state.logged_in:
 
-    left, center, right = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
 
-    with center:
+    with col2:
 
         st.title("🎓 Cosmas CGPA Calculator")
         st.caption("Calculate your GPA & CGPA with ease.")
@@ -86,55 +86,4 @@ if not st.session_state.logged_in:
 
             email = st.text_input(
                 "Email",
-                key="signup_email"
-            )
-
-            new_password = st.text_input(
-                "Password",
-                type="password",
-                key="signup_password"
-            )
-
-            confirm_password = st.text_input(
-                "Confirm Password",
-                type="password",
-                key="signup_confirm"
-            )
-
-            if st.button(
-                "Create Account",
-                use_container_width=True
-            ):
-
-                if new_password != confirm_password:
-
-                    st.error(
-                        "Passwords do not match."
-                    )
-
-                else:
-
-                    success, message = auth.register(
-                        new_username,
-                        email,
-                        new_password
-                    )
-
-                    if success:
-
-                        st.success(message)
-
-                    else:
-
-                        st.error(message)
-
-# =====================================
-# MAIN APPLICATION
-# =====================================
-
-else:
-
-    st.sidebar.title("🎓 Cosmas CGPA")
-
-    st.sidebar.success(
-        f"Welcome, {st.session_state.username}"
+                key="
