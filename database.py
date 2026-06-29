@@ -22,8 +22,23 @@ CREATE TABLE IF NOT EXISTS users(
     matric_number TEXT,
     department TEXT,
     faculty TEXT,
-    level TEXT,
+    current_level TEXT,
     admission_year TEXT
+)
+""")
+
+# ==========================
+# COURSES TABLE
+# ==========================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS courses(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department TEXT NOT NULL,
+    level TEXT NOT NULL,
+    semester TEXT NOT NULL,
+    course_code TEXT NOT NULL,
+    credit_unit INTEGER NOT NULL
 )
 """)
 
@@ -48,19 +63,16 @@ CREATE TABLE IF NOT EXISTS results(
 
 conn.commit()
 
-# ==========================
+# ======================================================
 # USER FUNCTIONS
-# ==========================
+# ======================================================
 
 def create_user(username, email, password):
     try:
-        cursor.execute(
-            """
-            INSERT INTO users(username,email,password)
-            VALUES(?,?,?)
-            """,
-            (username, email, password)
-        )
+        cursor.execute("""
+        INSERT INTO users(username,email,password)
+        VALUES(?,?,?)
+        """, (username, email, password))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -81,7 +93,7 @@ def update_profile(
     matric_number,
     department,
     faculty,
-    level,
+    current_level,
     admission_year
 ):
 
@@ -92,24 +104,87 @@ def update_profile(
         matric_number=?,
         department=?,
         faculty=?,
-        level=?,
+        current_level=?,
         admission_year=?
     WHERE username=?
-    """,(
+    """, (
         full_name,
         matric_number,
         department,
         faculty,
-        level,
+        current_level,
         admission_year,
         username
     ))
 
     conn.commit()
 
-# ==========================
+# ======================================================
+# COURSE FUNCTIONS
+# ======================================================
+
+def add_course(
+    department,
+    level,
+    semester,
+    course_code,
+    credit_unit
+):
+
+    cursor.execute("""
+    INSERT INTO courses(
+        department,
+        level,
+        semester,
+        course_code,
+        credit_unit
+    )
+    VALUES(?,?,?,?,?)
+    """, (
+        department,
+        level,
+        semester,
+        course_code.upper(),
+        credit_unit
+    ))
+
+    conn.commit()
+
+
+def get_courses(
+    department,
+    level,
+    semester
+):
+
+    cursor.execute("""
+    SELECT *
+    FROM courses
+    WHERE department=?
+    AND level=?
+    AND semester=?
+    ORDER BY course_code
+    """, (
+        department,
+        level,
+        semester
+    ))
+
+    return cursor.fetchall()
+
+
+def delete_course(course_id):
+
+    cursor.execute(
+        "DELETE FROM courses WHERE id=?",
+        (course_id,)
+    )
+
+    conn.commit()
+
+# ======================================================
 # RESULT FUNCTIONS
-# ==========================
+# ======================================================
 
 def save_result(
     username,
@@ -134,7 +209,7 @@ def save_result(
         total_quality_points
     )
     VALUES(?,?,?,?,?,?,?,?)
-    """,(
+    """, (
         username,
         academic_session,
         level,
@@ -155,9 +230,22 @@ def get_results(username):
     FROM results
     WHERE username=?
     ORDER BY created_at DESC
-    """,(username,))
+    """, (username,))
 
     return cursor.fetchall()
+
+
+def get_previous_result(username):
+
+    cursor.execute("""
+    SELECT *
+    FROM results
+    WHERE username=?
+    ORDER BY created_at DESC
+    LIMIT 1
+    """, (username,))
+
+    return cursor.fetchone()
 
 
 def delete_result(result_id):
@@ -168,18 +256,3 @@ def delete_result(result_id):
     )
 
     conn.commit()
-
-
-def get_previous_totals(username):
-
-    cursor.execute("""
-    SELECT
-        total_credit_units,
-        total_quality_points
-    FROM results
-    WHERE username=?
-    ORDER BY created_at DESC
-    LIMIT 1
-    """,(username,))
-
-    return cursor.fetchone()
