@@ -14,7 +14,6 @@ def show():
     if "courses" not in st.session_state:
         st.session_state.courses = []
 
-    # Dropdown track config
     st.subheader("Select Academic Period")
     semester_options = [
         "100L - First Semester", "100L - Second Semester",
@@ -25,21 +24,22 @@ def show():
     ]
     selected_semester = st.selectbox("Which semester are you calculating for?", semester_options)
 
-    # Automatically fetch past baselines from history
+    # Automatically fetch past baselines safely
     history_data = database.get_history(st.session_state.username)
     prev_cu = 0
     prev_qp = 0.0
     
     if history_data:
-        prev_cu = sum(row[3] for row in history_data)
-        prev_qp = sum(row[4] for row in history_data)
+        for row in history_data:
+            if len(row) > 4: # Verify columns exist before adding
+                prev_cu += row[3]
+                prev_qp += row[4]
 
     st.info(f"📋 Carried Forward Baseline: {prev_cu} Credit Units | {prev_qp:.2f} Quality Points")
     st.divider()
 
     grades = {"A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0}
 
-    # Course Input
     with st.form("course_form"):
         code = st.text_input("Course Code")
         c1, c2 = st.columns(2)
@@ -65,7 +65,6 @@ def show():
                 })
                 st.success(f"{code} added successfully.")
 
-    # Calculations Display
     if st.session_state.courses:
         df = pd.DataFrame(st.session_state.courses)
         total_cu = df["Credit Units"].sum()
@@ -98,7 +97,6 @@ def show():
 
         st.divider()
 
-        # Save History
         if st.button("💾 Save Result", use_container_width=True):
             database.save_history(st.session_state.username, semester_gpa, cgpa, total_cu, total_qp, selected_semester)
             st.success(f"Calculation for {selected_semester} saved.")
@@ -107,7 +105,6 @@ def show():
 
         st.divider()
 
-        # HTML Graphic Print Slip Document Export Builder
         table_rows = "".join([
             f"<tr><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Course']}</td><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Credit Units']}</td><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Grade']}</td><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Quality Points']}</td></tr>"
             for c in st.session_state.courses
