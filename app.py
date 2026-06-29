@@ -92,10 +92,31 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Invalid Username or Password Credentials.")
 else:
+    # SIDEBAR UPGRADES (As requested for the navigation view)
+    st.sidebar.markdown("""
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div style="width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 4px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                <img src="https://img.icons8.com/fluent-solid/120/ffffff/student-male.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background-color: #1e293b;" alt="Cosmas Campaign">
+            </div>
+            <div style="background-color: #e11d48; color: white; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 8px; letter-spacing: 1px; animation: pulse 2s infinite;">
+                ★ VOTE FOR COSMAS ★
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
     st.sidebar.title("Navigation")
     menu_selection = st.sidebar.radio("Go to:", ["Dashboard", "CGPA Calculator", "History Log", "My Profile"])
     
-    st.sidebar.divider()
+    # Bottom Campaign Footer Controls
+    st.sidebar.markdown("<br><hr style='margin: 10px 0; border-color: #334155;'>", unsafe_allow_html=True)
+    
+    st.sidebar.markdown("""
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 12px; border-radius: 8px; border: 1px solid #1e3a8a; text-align: center; margin-bottom: 15px;">
+            <p style="color: #94a3b8; font-size: 11px; margin: 0; font-family: sans-serif;">Platform Initiative</p>
+            <b style="color: #3b82f6; font-size: 13px; font-family: sans-serif;">Powered by Cosmas and Team</b>
+        </div>
+        """, unsafe_allow_html=True)
+        
     if st.sidebar.button("Logout", type="primary", use_container_width=True):
         st.session_state.authenticated = False
         st.session_state.username = None
