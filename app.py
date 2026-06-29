@@ -6,14 +6,17 @@ import profile
 import history
 import sqlite3
 
+# Initialize App Configurations
 st.set_page_config(page_title="Cosmas CGPA Engine", page_icon="🎓", layout="wide")
 db.init_db()
 
+# Session State Setup
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "username" not in st.session_state:
     st.session_state.username = None
 
+# If not logged in, show the Auth Portal (Login / Registration)
 if not st.session_state.authenticated:
     try:
         st.image("assets/cosmas_banner.png", use_container_width=True)
@@ -80,6 +83,7 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Please fill out all required fields.")
             else:
+                # Login Processing
                 conn = sqlite3.connect("users.db")
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
@@ -92,14 +96,16 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Invalid Username or Password Credentials.")
 else:
-    # SIDEBAR UPGRADES (As requested for the navigation view)
+    # COMPACT SQUARE SIDEBAR BRANDING
     st.sidebar.markdown("""
-        <div style="text-align: center; margin-bottom: 15px;">
-            <div style="width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 4px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-                <img src="https://img.icons8.com/fluent-solid/120/ffffff/student-male.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background-color: #1e293b;" alt="Cosmas Campaign">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <div style="width: 75px; height: 75px; border-radius: 6px; background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 3px; display: inline-block; box-shadow: 0 2px 6px rgba(0,0,0,0.25);">
+                <img src="https://img.icons8.com/fluent-solid/80/ffffff/student-male.png" style="width: 100%; height: 100%; border-radius: 4px; object-fit: cover; background-color: #1e293b;" alt="Cosmas Campaign">
             </div>
-            <div style="background-color: #e11d48; color: white; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 8px; letter-spacing: 1px; animation: pulse 2s infinite;">
-                ★ VOTE FOR COSMAS ★
+            <div style="display: block; margin-top: 6px;">
+                <span style="background-color: #e11d48; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">
+                    ★ Vote for Cosmas ★
+                </span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -107,7 +113,7 @@ else:
     st.sidebar.title("Navigation")
     menu_selection = st.sidebar.radio("Go to:", ["Dashboard", "CGPA Calculator", "History Log", "My Profile"])
     
-    # Bottom Campaign Footer Controls
+    # Bottom Campaign Footer
     st.sidebar.markdown("<br><hr style='margin: 10px 0; border-color: #334155;'>", unsafe_allow_html=True)
     
     st.sidebar.markdown("""
@@ -125,6 +131,7 @@ else:
         st.session_state.auth_mode_index = 0
         st.rerun()
 
+    # Routing Navigation Views
     if menu_selection == "Dashboard":
         dashboard.show(db.get_statistics, db.get_user_profile)
     elif menu_selection == "CGPA Calculator":
