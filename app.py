@@ -4,11 +4,10 @@ import dashboard
 import calculator
 import history
 import profile
-import admin
 
-# =====================================
+# ==========================
 # PAGE CONFIG
-# =====================================
+# ==========================
 
 st.set_page_config(
     page_title="Cosmas CGPA Calculator",
@@ -16,9 +15,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# =====================================
+# ==========================
 # SESSION STATE
-# =====================================
+# ==========================
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -26,174 +25,139 @@ if "logged_in" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = ""
 
-# =====================================
+# ==========================
 # LOGIN / SIGNUP
-# =====================================
+# ==========================
 
 if not st.session_state.logged_in:
 
-    col1, col2, col3 = st.columns([1, 2, 1])
+    st.title("🎓 Cosmas CGPA Calculator")
+    st.caption("Calculate your GPA & CGPA easily")
 
-    with col2:
+    login_tab, signup_tab = st.tabs(
+        ["🔑 Login", "📝 Sign Up"]
+    )
 
-        st.title("🎓 Cosmas CGPA Calculator")
-        st.caption("Calculate your GPA & CGPA with ease.")
+    # ---------------- LOGIN ----------------
 
-        login_tab, signup_tab = st.tabs(
-            ["🔑 Login", "📝 Create Account"]
+    with login_tab:
+
+        username = st.text_input(
+            "Username",
+            key="login_username"
         )
 
-        # ---------------- LOGIN ----------------
+        password = st.text_input(
+            "Password",
+            type="password",
+            key="login_password"
+        )
 
-        with login_tab:
+        if st.button(
+            "Login",
+            use_container_width=True
+        ):
 
-            username = st.text_input(
-                "Username",
-                key="login_username"
-            )
+            if auth.login(username, password):
 
-            password = st.text_input(
-                "Password",
-                type="password",
-                key="login_password"
-            )
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.rerun()
 
-            if st.button(
-                "Login",
-                use_container_width=True
-            ):
+            else:
 
-                if auth.login(username, password):
+                st.error(
+                    "Invalid username or password."
+                )
 
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
+    # ---------------- SIGN UP ----------------
 
-                    st.rerun()
+    with signup_tab:
 
+        new_username = st.text_input(
+            "Username",
+            key="signup_username"
+        )
+
+        email = st.text_input(
+            "Email",
+            key="signup_email"
+        )
+
+        new_password = st.text_input(
+            "Password",
+            type="password",
+            key="signup_password"
+        )
+
+        confirm = st.text_input(
+            "Confirm Password",
+            type="password",
+            key="signup_confirm"
+        )
+
+        if st.button(
+            "Create Account",
+            use_container_width=True
+        ):
+
+            if new_password != confirm:
+
+                st.error("Passwords do not match.")
+
+            else:
+
+                success, message = auth.register(
+                    new_username,
+                    email,
+                    new_password
+                )
+
+                if success:
+                    st.success(message)
                 else:
+                    st.error(message)
 
-                    st.error(
-                        "Invalid username or password."
-                    )
-
-        # ---------------- SIGN UP ----------------
-
-        with signup_tab:
-
-            new_username = st.text_input(
-                "Username",
-                key="signup_username"
-            )
-
-            email = st.text_input(
-                "Email",
-                key="signup_email"
-            )
-
-            new_password = st.text_input(
-                "Password",
-                type="password",
-                key="signup_password"
-            )
-
-            confirm_password = st.text_input(
-                "Confirm Password",
-                type="password",
-                key="signup_confirm"
-            )
-
-            if st.button(
-                "Create Account",
-                use_container_width=True
-            ):
-
-                if new_password != confirm_password:
-
-                    st.error(
-                        "Passwords do not match."
-                    )
-
-                elif len(new_password) < 6:
-
-                    st.error(
-                        "Password must be at least 6 characters."
-                    )
-
-                else:
-
-                    success, message = auth.register(
-                        new_username,
-                        email,
-                        new_password
-                    )
-
-                    if success:
-
-                        st.success(message)
-
-                    else:
-
-                        st.error(message)
-
-# =====================================
-# MAIN APPLICATION
-# =====================================
+# ==========================
+# MAIN APP
+# ==========================
 
 else:
 
     st.sidebar.title("🎓 Cosmas CGPA")
 
     st.sidebar.success(
-        f"Welcome, {st.session_state.username}"
+        f"Welcome {st.session_state.username}"
     )
 
     page = st.sidebar.radio(
-
         "Navigation",
-
         [
             "🏠 Dashboard",
             "🎓 Calculator",
             "📊 History",
             "👤 Profile"
         ]
-
     )
 
     st.sidebar.divider()
 
     if st.sidebar.button(
-
         "🚪 Logout",
-
         use_container_width=True
-
     ):
-
         st.session_state.logged_in = False
         st.session_state.username = ""
-
-        if "courses" in st.session_state:
-            del st.session_state["courses"]
-
         st.rerun()
 
-    # =====================================
-    # PAGE ROUTING
-    # =====================================
-
     if page == "🏠 Dashboard":
-
         dashboard.show()
 
     elif page == "🎓 Calculator":
-
         calculator.show()
 
     elif page == "📊 History":
-
         history.show()
 
     elif page == "👤 Profile":
-
         profile.show()
