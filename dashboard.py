@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 def show(get_statistics_func, get_user_func):
     # 1. COSMAS BANNER HEADLINER
@@ -20,7 +21,7 @@ def show(get_statistics_func, get_user_func):
         department = user['department']
         current_level = user['current_level']
         
-        # 2. DYNAMIC WELCOME TRACKER (Session vs Returning Context)
+        # Dynamic Welcome Header
         if "returning_user" not in st.session_state:
             st.markdown(f"<h2 style='font-family: sans-serif; color: #ffffff; margin-bottom: 5px;'>Welcome, {fullname} 🎓</h2>", unsafe_allow_html=True)
             st.session_state.returning_user = True
@@ -29,8 +30,15 @@ def show(get_statistics_func, get_user_func):
             
         st.markdown("<p style='color: #94a3b8; margin-top: 0; margin-bottom: 25px;'>Academic dashboard overview performance hub.</p>", unsafe_allow_html=True)
         
-        # 3. SIDE-BY-SIDE METRICS GRID
-        col_profile, col_metrics = st.columns([1.2, 1])
+        # Fetch statistics and history records
+        stats = get_statistics_func(st.session_state.username)
+        
+        # Import local database engine cleanly to read recent logs inside dashboard
+        import database as db
+        recent_logs = db.get_history(st.session_state.username)
+
+        # 2. SIDE-BY-SIDE METRICS GRID
+        col_profile, col_metrics = st.columns([1.1, 1])
         
         with col_profile:
             st.markdown(f"""
@@ -46,36 +54,89 @@ def show(get_statistics_func, get_user_func):
             """, unsafe_allow_html=True)
             
         with col_metrics:
-            stats = get_statistics_func(st.session_state.username)
-            if stats and stats[0] > 0:
+            # Check if user has calculated anything yet
+            if recent_logs and stats and stats[0] > 0:
                 total_calculations, max_cgpa, avg_cgpa = stats
-                st.markdown(f"""
-                <div style="background-color: #1e293b; padding: 22px; border-radius: 10px; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
-                    <h4 style="margin-top: 0; color: #ffffff; font-family: sans-serif; margin-bottom: 15px;">Performance Summary</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div style="background-color: #0f172a; padding: 12px; border-radius: 6px; text-align: center;">
-                            <span style="font-size: 12px; color: #94a3b8; display: block;">Highest CGPA</span>
-                            <span style="font-size: 22px; font-weight: bold; color: #10b981;">{max_cgpa:.2f}</span>
-                        </div>
-                        <div style="background-color: #0f172a; padding: 12px; border-radius: 6px; text-align: center;">
-                            <span style="font-size: 12px; color: #94a3b8; display: block;">Average CGPA</span>
-                            <span style="font-size: 22px; font-weight: bold; color: #6366f1;">{avg_cgpa:.2f}</span>
-                        </div>
-                    </div>
-                    <div style="background-color: #0f172a; padding: 10px; border-radius: 6px; text-align: center; margin-top: 15px;">
-                        <span style="font-size: 12px; color: #94a3b8;">Total Computation Syncs: <b>{total_calculations}</b></span>
-                    </div>
+                # The most recent entry represents current standing
+                latest_cgpa = recent_logs[0][2] 
+                
+                # 3. ACADEMIC GOAL INTERACTION TRAPPING
+                st.markdown("""
+                <div style="background-color: #1e293b; padding: 20px 22px 5px 22px; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+                    <h4 style="margin-top: 0; color: #ffffff; font-family: sans-serif; margin-bottom: 5px;">Performance Summary & Goals</h4>
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # Render Target Input subtly using an expander inside the metrics container box
+                with st.container():
+                    st.markdown("<div style='background-color: #1e293b; padding: 0px 22px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;'>", unsafe_allow_html=True)
+                    
+                    # Manage target session state
+                    if "target_cgpa" not in st.session_state:
+                        st.session_state.target_cgpa = 4.50
+                        
+                    target_input = st.number_input(
+                        "Set Target Class/Goal CGPA:", 
+                        min_value=1.0, max_value=5.0, 
+                        value=st.session_state.target_cgpa, 
+                        step=0.05, 
+                        key="dashboard_target_setter"
+                    )
+                    st.session_state.target_cgpa = target_input
+                    
+                    # Calculate progress percentage toward goal
+                    progress_pct = min(int((latest_cgpa / target_input) * 100), 100) if target_input > 0 else 0
+                    
+                    # Visual Metric Elements
+                    st.markdown(f"""
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                            <div style="background-color: #0f172a; padding: 12px; border-radius: 6px; text-align: center;">
+                                <span style="font-size: 11px; color: #94a3b8; display: block;">Current CGPA Standings</span>
+                                <span style="font-size: 24px; font-weight: bold; color: #10b981;">{latest_cgpa:.2f}</span>
+                            </div>
+                            <div style="background-color: #0f172a; padding: 12px; border-radius: 6px; text-align: center;">
+                                <span style="font-size: 11px; color: #94a3b8; display: block;">Target Metric Goal</span>
+                                <span style="font-size: 24px; font-weight: bold; color: #3b82f6;">{target_input:.2f}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #cbd5e1; margin-bottom: 4px;">
+                                <span>Goal Trajectory Progress</span>
+                                <b>{progress_pct}%</b>
+                            </div>
+                            <div style="background-color: #334155; width: 100%; height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="background-color: #10b981; width: {progress_pct}%; height: 100%;"></div>
+                            </div>
+                        </div>
+                        <p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 10px 0 0 0; padding-bottom: 15px;'>
+                            Total Computations Synced: <b>{total_calculations}</b> | Highest: <b>{max_cgpa:.2f}</b>
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
                 st.markdown("""
-                <div style="background-color: #1e293b; padding: 22px; border-radius: 10px; height: 100%; text-align: center;">
-                    <h4 style="margin-top: 0; color: #ffffff; font-family: sans-serif;">Performance Summary</h4>
-                    <p style="color: #94a3b8; font-size: 14px; margin-top: 20px;">No computations logged yet.</p>
+                <div style="background-color: #1e293b; padding: 22px; border-radius: 10px; height: 100%; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <h4 style="margin-top: 0; color: #ffffff; font-family: sans-serif; margin-bottom: 10px;">Performance Summary</h4>
+                    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 0;">No computations logged yet.</p>
+                    <p style="color: #64748b; font-size: 12px; margin-top: 5px;">Head over to the <b>CGPA Calculator</b> tab to lock in your semester standings.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # 4. BOTTOM WORKSPACE PROGRESS ROADMAP
+        # 4. NEW SECTION: SAVED RESULTS & RECENT CALCULATIONS LOG
+        if recent_logs:
+            st.markdown("<br><h4 style='font-family: sans-serif; color: #ffffff; margin-bottom: 10px;'>Recent Calculation Log Snapshot</h4>", unsafe_allow_html=True)
+            
+            # Formulate clean dataframe representation of the top 3 items
+            df_snapshot = pd.DataFrame(
+                recent_logs[:3], 
+                columns=["ID", "GPA", "CGPA", "Total Units", "Quality Points", "Calculation Label / Semester", "Timestamp"]
+            )
+            # Drop structural columns for visual presentation elegance
+            df_snapshot = df_snapshot.drop(columns=["ID", "Timestamp"])
+            
+            st.dataframe(df_snapshot, use_container_width=True, hide_index=True)
+
+        # 5. BOTTOM WORKSPACE PROGRESS ROADMAP
         st.markdown("<br><h4 style='font-family: sans-serif; color: #ffffff; margin-bottom: 15px;'>Academic Roadmap Tracker</h4>", unsafe_allow_html=True)
         st.markdown(f"""
         <div style="background-color: #0f172a; padding: 20px; border-radius: 10px; border: 1px solid #1e293b;">
