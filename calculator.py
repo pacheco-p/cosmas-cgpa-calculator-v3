@@ -7,15 +7,15 @@ def show():
 
     st.title("🎓 CGPA Calculator")
 
-    # ==========================
-    # STUDENT PROFILE
-    # ==========================
-
     user = database.get_user(st.session_state.username)
 
     if not user:
         st.error("User not found.")
         return
+
+    # ==========================
+    # STUDENT INFORMATION
+    # ==========================
 
     st.subheader("Student Information")
 
@@ -23,7 +23,7 @@ def show():
 
     with col1:
         st.write(f"**Name:** {user['full_name'] or 'Not Set'}")
-        st.write(f"**Matric No:** {user['matric_number'] or 'Not Set'}")
+        st.write(f"**Matric Number:** {user['matric_number'] or 'Not Set'}")
         st.write(f"**Department:** {user['department'] or 'Not Set'}")
 
     with col2:
@@ -32,7 +32,14 @@ def show():
 
     st.divider()
 
-    session = st.text_input("Academic Session", "2025/2026")
+    # ==========================
+    # SESSION DETAILS
+    # ==========================
+
+    session = st.text_input(
+        "Academic Session",
+        "2025/2026"
+    )
 
     semester = st.selectbox(
         "Semester",
@@ -43,6 +50,10 @@ def show():
     )
 
     st.divider()
+
+    # ==========================
+    # GRADING SYSTEM
+    # ==========================
 
     grades = {
         "A": 5,
@@ -62,11 +73,11 @@ def show():
 
     title = st.text_input("Course Title")
 
-    cu = st.number_input(
+    credit = st.number_input(
         "Credit Unit",
-        1,
-        6,
-        3
+        min_value=1,
+        max_value=6,
+        value=3
     )
 
     grade = st.selectbox(
@@ -76,7 +87,7 @@ def show():
 
     if st.button("➕ Add Course"):
 
-        qp = cu * grades[grade]
+        quality_point = credit * grades[grade]
 
         st.session_state.courses.append({
 
@@ -84,17 +95,21 @@ def show():
 
             "Course Title": title,
 
-            "Credit Unit": cu,
+            "Credit Unit": credit,
 
             "Grade": grade,
 
-            "Quality Point": qp
+            "Quality Point": quality_point
 
         })
 
         st.success("Course added successfully.")
 
-    if st.session_state.courses:
+    # ==========================
+    # DISPLAY COURSES
+    # ==========================
+
+    if len(st.session_state.courses) > 0:
 
         st.divider()
 
@@ -102,28 +117,36 @@ def show():
 
         st.dataframe(
             df,
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
 
-        total_cu = df["Credit Unit"].sum()
+        total_units = df["Credit Unit"].sum()
 
-        total_qp = df["Quality Point"].sum()
+        total_quality = df["Quality Point"].sum()
 
-        gpa = total_qp / total_cu
+        gpa = total_quality / total_units
 
         st.metric(
             "Semester GPA",
             f"{gpa:.2f}"
         )
 
+        st.divider()
+
         previous_cgpa = st.number_input(
             "Previous CGPA",
-            0.00,
-            5.00,
-            0.00
+            min_value=0.00,
+            max_value=5.00,
+            value=0.00,
+            step=0.01
         )
 
-        cgpa = (previous_cgpa + gpa) / 2
+        # Simple CGPA estimate
+        if previous_cgpa == 0:
+            cgpa = gpa
+        else:
+            cgpa = (previous_cgpa + gpa) / 2
 
         st.metric(
             "Current CGPA",
@@ -136,81 +159,15 @@ def show():
         ):
 
             database.save_result(
-
                 st.session_state.username,
-
                 session,
-
                 semester,
-
-                gpa,
-
-                cgpa
-
+                round(gpa, 2),
+                round(cgpa, 2)
             )
 
-            st.success(
-                "Result saved successfully."
-            )
-            # ==========================
-# GPA
-# ==========================
+            st.success("Result saved successfully.")
 
-total_cu = df["Credit Unit"].sum()
-total_qp = df["Quality Point"].sum()
+            st.session_state.courses = []
 
-gpa = total_qp / total_cu
-
-st.metric("Semester GPA", f"{gpa:.2f}")
-
-st.divider()
-
-st.subheader("Previous Academic Record")
-
-previous_units = st.number_input(
-    "Previous Total Credit Units",
-    min_value=0,
-    value=0
-)
-
-previous_qp = st.number_input(
-    "Previous Quality Points",
-    min_value=0.0,
-    value=0.0,
-    step=0.01
-)
-
-current_qp = total_qp
-current_units = total_cu
-
-overall_qp = previous_qp + current_qp
-overall_units = previous_units + current_units
-
-if overall_units > 0:
-    cgpa = overall_qp / overall_units
-else:
-    cgpa = gpa
-
-st.metric("Current CGPA", f"{cgpa:.2f}")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.metric("Current Credit Units", current_units)
-
-with col2:
-    st.metric("Total Credit Units", overall_units)
-
-if st.button("💾 Save Result", use_container_width=True):
-
-    database.save_result(
-        st.session_state.username,
-        session,
-        semester,
-        round(gpa, 2),
-        round(cgpa, 2)
-    )
-
-    st.success("Result saved successfully.")
-
-    st.session_state.courses = []
+            st.rerun()
