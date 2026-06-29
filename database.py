@@ -1,13 +1,17 @@
 import sqlite3
 
-# Database connection
+# ==========================
+# DATABASE CONNECTION
+# ==========================
+
 conn = sqlite3.connect("cgpa.db", check_same_thread=False)
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
-# =========================
+# ==========================
 # USERS TABLE
-# =========================
+# ==========================
+
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,33 +27,40 @@ CREATE TABLE IF NOT EXISTS users(
 )
 """)
 
-# =========================
+# ==========================
 # RESULTS TABLE
-# =========================
+# ==========================
+
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS results(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL,
-    session TEXT,
-    semester TEXT,
-    gpa REAL,
-    cgpa REAL,
+    academic_session TEXT NOT NULL,
+    level TEXT NOT NULL,
+    semester TEXT NOT NULL,
+    gpa REAL NOT NULL,
+    cgpa REAL NOT NULL,
+    total_credit_units INTEGER NOT NULL,
+    total_quality_points REAL NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """)
 
 conn.commit()
 
-# =========================
+# ==========================
 # USER FUNCTIONS
-# =========================
+# ==========================
 
 def create_user(username, email, password):
     try:
-        cursor.execute("""
-        INSERT INTO users(username,email,password)
-        VALUES(?,?,?)
-        """, (username, email, password))
+        cursor.execute(
+            """
+            INSERT INTO users(username,email,password)
+            VALUES(?,?,?)
+            """,
+            (username, email, password)
+        )
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -64,19 +75,27 @@ def get_user(username):
     return cursor.fetchone()
 
 
-def update_profile(username, full_name, matric_number,
-                   department, faculty, level, admission_year):
+def update_profile(
+    username,
+    full_name,
+    matric_number,
+    department,
+    faculty,
+    level,
+    admission_year
+):
 
     cursor.execute("""
     UPDATE users
-    SET full_name=?,
+    SET
+        full_name=?,
         matric_number=?,
         department=?,
         faculty=?,
         level=?,
         admission_year=?
     WHERE username=?
-    """, (
+    """,(
         full_name,
         matric_number,
         department,
@@ -88,28 +107,42 @@ def update_profile(username, full_name, matric_number,
 
     conn.commit()
 
-
-# =========================
+# ==========================
 # RESULT FUNCTIONS
-# =========================
+# ==========================
 
-def save_result(username, session, semester, gpa, cgpa):
+def save_result(
+    username,
+    academic_session,
+    level,
+    semester,
+    gpa,
+    cgpa,
+    total_credit_units,
+    total_quality_points
+):
 
     cursor.execute("""
     INSERT INTO results(
         username,
-        session,
+        academic_session,
+        level,
         semester,
         gpa,
-        cgpa
+        cgpa,
+        total_credit_units,
+        total_quality_points
     )
-    VALUES(?,?,?,?,?)
-    """, (
+    VALUES(?,?,?,?,?,?,?,?)
+    """,(
         username,
-        session,
+        academic_session,
+        level,
         semester,
         gpa,
-        cgpa
+        cgpa,
+        total_credit_units,
+        total_quality_points
     ))
 
     conn.commit()
@@ -122,7 +155,7 @@ def get_results(username):
     FROM results
     WHERE username=?
     ORDER BY created_at DESC
-    """, (username,))
+    """,(username,))
 
     return cursor.fetchall()
 
@@ -137,11 +170,16 @@ def delete_result(result_id):
     conn.commit()
 
 
-def clear_results(username):
+def get_previous_totals(username):
 
-    cursor.execute(
-        "DELETE FROM results WHERE username=?",
-        (username,)
-    )
+    cursor.execute("""
+    SELECT
+        total_credit_units,
+        total_quality_points
+    FROM results
+    WHERE username=?
+    ORDER BY created_at DESC
+    LIMIT 1
+    """,(username,))
 
-    conn.commit()
+    return cursor.fetchone()
