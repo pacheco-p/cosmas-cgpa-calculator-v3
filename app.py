@@ -66,7 +66,8 @@ if not st.session_state.authenticated:
                             formatted_fullname = fullname.strip().title()
                             formatted_dept = dept.strip().upper()
                             
-                            conn = sqlite3.connect("users.db")
+                            # Added timeout handling to clear database concurrency blocks
+                            conn = sqlite3.connect("users.db", timeout=20)
                             cursor = conn.cursor()
                             cursor.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?)", 
                                            (username, password, formatted_fullname, email, matric, formatted_dept, level))
@@ -83,8 +84,8 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Please fill out all required fields.")
             else:
-                # Login Processing
-                conn = sqlite3.connect("users.db")
+                # Login Processing with safe database connection timeout
+                conn = sqlite3.connect("users.db", timeout=20)
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
                 user_match = cursor.fetchone()
