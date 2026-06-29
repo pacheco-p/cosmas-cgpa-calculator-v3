@@ -1,7 +1,6 @@
 import hashlib
 import database
 
-
 # ==========================
 # HASH PASSWORD
 # ==========================
@@ -75,7 +74,7 @@ def update_profile(
     matric_number,
     department,
     faculty,
-    level,
+    current_level,
     admission_year
 ):
 
@@ -85,6 +84,6 @@ def update_profile(
         matric_number,
         department,
         faculty,
-        level,
+        current_level,
         admission_year
     )
