@@ -38,7 +38,6 @@ def show(get_history_func, save_history_func, get_user_func):
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
         
-        # Single Course Code row stretching full width like the screenshot
         course_code = st.text_input("Course Code", placeholder="Enter Course Code", key="input_course_code")
         
         col_cu, col_gr = st.columns(2)
@@ -49,10 +48,7 @@ def show(get_history_func, save_history_func, get_user_func):
             
         # Add Course Button Logic
         if st.button("➕ Add Course", key="add_course_to_queue_btn"):
-            # Use fallback naming if blank
             display_code = course_code.strip().upper() if course_code.strip() else "COURSE"
-            
-            # Append item to current tracking session state
             st.session_state.course_queue.append({
                 "code": display_code,
                 "units": credit_units,
@@ -69,7 +65,6 @@ def show(get_history_func, save_history_func, get_user_func):
         else:
             st.markdown("#### Current Entries Summary")
             
-            # Display items neatly with clear removal options
             for idx, item in enumerate(st.session_state.course_queue):
                 q_col1, q_col2, q_col3, q_col4 = st.columns([2, 1, 1, 1])
                 q_col1.markdown(f"**{item['code']}**")
@@ -85,12 +80,10 @@ def show(get_history_func, save_history_func, get_user_func):
 
         st.divider()
 
-        # --- MATH ENGINE & AGGREGATION LOOKUP ---
-        # Sum current session metrics from the dynamic list entries
+        # --- MATH ENGINE ---
         current_qp = sum(item["qp"] for item in st.session_state.course_queue)
         current_cu = sum(item["units"] for item in st.session_state.course_queue)
         
-        # Combine historical records with workspace figures
         total_cumulative_qp = prev_qp + current_qp
         total_cumulative_cu = prev_units + current_cu
 
@@ -102,7 +95,6 @@ def show(get_history_func, save_history_func, get_user_func):
             c1.metric("Total Credit Units Passed", f"{total_cumulative_cu} Units")
             c2.metric("Your Calculated Cumulative CGPA", f"{final_cgpa:.2f}")
 
-            # Clear temporary session container logging
             if current_cu > 0:
                 current_gpa_calc = current_qp / current_cu
                 st.caption(f"Current Semester Specific GPA Profile: **{current_gpa_calc:.2f}** (across {current_cu} units)")
@@ -129,7 +121,8 @@ def show(get_history_func, save_history_func, get_user_func):
         t_col1, t_col2 = st.columns(2)
         with t_col1:
             current_cgpa_input = st.number_input("What is your current CGPA right now?", min_value=0.0, max_value=5.0, value=3.5, step=0.01, key="target_curr_cgpa")
-            total_units_passed = st.number_input("Total credit units completed so far?", min_value=1, value=60, step=1, key=target_units_passed)
+            # --- FIXED QUOTES TYPO HERE ---
+            total_units_passed = st.number_input("Total credit units completed so far?", min_value=1, value=60, step=1, key="target_units_passed")
         with t_col2:
             target_cgpa_goal = st.number_input("What is your target/goal CGPA?", min_value=0.0, max_value=5.0, value=4.0, step=0.01, key="target_goal_cgpa")
             upcoming_units_load = st.number_input("Total credit units you are taking next semester?", min_value=1, value=20, step=1, key="target_upcoming_load")
