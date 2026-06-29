@@ -7,120 +7,80 @@ def show():
 
     st.title("🏠 Dashboard")
 
-    st.success(
-        f"Welcome, {st.session_state.username} 👋"
-    )
+    st.write(f"### Welcome, {st.session_state.username} 👋")
 
-    results = database.get_results(
-        st.session_state.username
-    )
+    user = database.get_user(st.session_state.username)
+
+    if user:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.info(f"**Full Name:** {user['full_name'] or 'Not Set'}")
+            st.info(f"**Matric No:** {user['matric_number'] or 'Not Set'}")
+            st.info(f"**Department:** {user['department'] or 'Not Set'}")
+
+        with col2:
+            st.info(f"**Faculty:** {user['faculty'] or 'Not Set'}")
+            st.info(f"**Level:** {user['level'] or 'Not Set'}")
+            st.info(f"**Admission Year:** {user['admission_year'] or 'Not Set'}")
+
+    st.divider()
+
+    results = database.get_results(st.session_state.username)
 
     if not results:
 
-        st.info(
-            "No saved results yet."
-        )
+        st.warning("No CGPA records found.")
 
         return
 
-    df = pd.DataFrame(
-
-        results,
-
-        columns=[
-            "ID",
-            "Username",
-            "Session",
-            "Semester",
-            "GPA",
-            "CGPA",
-            "Date"
-        ]
-
-    )
+    df = pd.DataFrame(results)
 
     latest = df.iloc[0]
 
-    total_results = len(df)
+    col1, col2, col3 = st.columns(3)
 
-    highest = df["CGPA"].max()
+    with col1:
+        st.metric(
+            "Latest GPA",
+            f"{latest['gpa']:.2f}"
+        )
 
-    average = df["CGPA"].mean()
+    with col2:
+        st.metric(
+            "Latest CGPA",
+            f"{latest['cgpa']:.2f}"
+        )
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
-        "Saved Results",
-        total_results
-    )
-
-    col2.metric(
-        "Latest CGPA",
-        f"{latest['CGPA']:.2f}"
-    )
-
-    col3.metric(
-        "Highest CGPA",
-        f"{highest:.2f}"
-    )
-
-    col4.metric(
-        "Average CGPA",
-        f"{average:.2f}"
-    )
+    with col3:
+        st.metric(
+            "Saved Results",
+            len(df)
+        )
 
     st.divider()
 
-    st.subheader("Latest Results")
+    st.subheader("Recent Results")
 
     st.dataframe(
-
         df[
             [
-                "Session",
-                "Semester",
-                "GPA",
-                "CGPA",
-                "Date"
+                "session",
+                "semester",
+                "gpa",
+                "cgpa",
+                "created_at"
             ]
         ],
-
         use_container_width=True,
-
         hide_index=True
-
     )
 
     st.divider()
 
-    st.subheader("📈 CGPA Progress")
+    st.subheader("CGPA Progress")
 
-    chart = df.iloc[::-1][["CGPA"]]
+    chart = df.iloc[::-1].set_index("created_at")["cgpa"]
 
     st.line_chart(chart)
-
-    st.divider()
-
-    latest_cgpa = latest["CGPA"]
-
-    st.subheader("Academic Standing")
-
-    if latest_cgpa >= 4.50:
-
-        st.success("🏆 First Class")
-
-    elif latest_cgpa >= 3.50:
-
-        st.info("🥇 Second Class Upper")
-
-    elif latest_cgpa >= 2.40:
-
-        st.warning("🥈 Second Class Lower")
-
-    elif latest_cgpa >= 1.50:
-
-        st.warning("🎓 Third Class")
-
-    else:
-
-        st.error("⚠️ Pass")
