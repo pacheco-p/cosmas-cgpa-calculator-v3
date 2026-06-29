@@ -1,79 +1,101 @@
-import streamlit as st
-import pandas as pd
-import database
+import sqlite3
 
-def show():
-    try:
-        st.image("assets/cosmas_banner.png", use_container_width=True)
-    except:
-        st.title("🏛️ COSMAS AT SUG TOP SEAT")
-
-    st.title("🏠 Dashboard")
-    st.success(f"Welcome back, {st.session_state.username}! 👋")
-
-    # -----------------------------
-    # Safe Statistics Calculation
-    # -----------------------------
-    stats = database.get_statistics(st.session_state.username)
-    
-    # Bulletproof checks against IndexError
-    total_saved = stats[0] if (stats and len(stats) > 0 and stats[0]) else 0
-    highest = stats[1] if (stats and len(stats) > 1 and stats[1]) else 0.00
-    average = stats[2] if (stats and len(stats) > 2 and stats[2]) else 0.00
-
-    history_data = database.get_history(st.session_state.username)
-    
-    # Bulletproof check for latest CGPA index
-    latest = history_data[0][2] if (history_data and len(history_data) > 0 and len(history_data[0]) > 2) else 0.00
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Saved Semesters", total_saved)
-    c2.metric("Latest CGPA", f"{latest:.2f}")
-    c3.metric("Highest CGPA", f"{highest:.2f}")
-    c4.metric("Average CGPA", f"{average:.2f}")
-
-    st.divider()
-
-    # -----------------------------
-    # Recent Activity Table
-    # -----------------------------
-    st.subheader("📋 Recent Calculations")
-    if history_data and len(history_data) > 0:
-        # Determine columns dynamically based on what the DB actually returned
-        num_cols = len(history_data[0])
-        all_cols = ["ID", "GPA", "CGPA", "Credit Units", "Quality Points", "Semester", "Date"]
-        df_cols = all_cols[:num_cols]
-
-        recent = pd.DataFrame(history_data, columns=df_cols)
-        
-        # Ensure fallback display names exist
-        display_cols = [c for c in ["Semester", "GPA", "CGPA", "Credit Units", "Date"] if c in recent.columns]
-        st.dataframe(
-            recent[display_cols],
-            use_container_width=True,
-            hide_index=True
+def init_db():
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    # Users table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT,
+            fullname TEXT,
+            email TEXT,
+            matric_no TEXT,
+            department TEXT,
+            current_level TEXT
         )
+    """)
+    # History tracking table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            gpa REAL,
+            cgpa REAL,
+            total_units INTEGER,
+            quality_points REAL,
+            semester_label TEXT,
+            date_saved TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-        st.divider()
-        st.subheader("📈 CGPA Progress Trend")
-        if "Semester" in recent.columns and "CGPA" in recent.columns:
-            chart_df = recent.iloc[::-1].copy()
-            chart_df = chart_df.set_index("Semester")[["CGPA"]]
-            st.line_chart(chart_df)
-    else:
-        st.info("No saved calculations yet. Add records in the calculator tab.")
+def get_user_profile(username):
+    conn = sqlite3.connect("users.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
 
-    st.divider()
+def update_user_profile(username, fullname, email, matric_no, department, current_level):
+    try:
+        conn = sqlite3.connect("users.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users 
+            SET fullname = ?, email = ?, matric_no = ?, department = ?, current_level = ? 
+            WHERE username = ?
+        """, (fullname, email, matric_no, department, current_level, username))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Database Error: {e}")
+        return False
 
-    # Motivation Blocks
-    st.subheader("🎯 Academic Goal Status")
-    if latest >= 4.50:
-        st.success("Excellent work! You're maintaining a First Class. Keep it up! 🏆")
-    elif latest >= 3.50:
-        st.info("You're in Second Class Upper. A little extra effort can get you to First Class.")
-    elif latest >= 2.40:
-        st.warning("You're in Second Class Lower. Stay focused—you can still improve your CGPA.")
-    elif latest >= 1.50:
-        st.warning("You're currently in Third Class. Every semester is a chance to climb higher.")
-    else:
-        st.error("Your CGPA needs attention. Stay determined and improve one course at a time.")
+def get_statistics(username):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT COUNT(*), MAX(cgpa), AVG(cgpa) 
+        FROM history 
+        WHERE username = ?
+    """, (username,))
+    stats = cursor.fetchone()
+    conn.close()
+    if stats and stats[0] > 0:
+        return stats[0], stats[1] if stats[1] else 0.0, stats[2] if stats[2] else 0.0
+    return 0, 0.0, 0.0
+
+def save_history(username, gpa, cgpa, total_units, quality_points, semester_label):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO history (username, gpa, cgpa, total_units, quality_points, semester_label)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (username, gpa, cgpa, total_units, quality_points, semester_label))
+    conn.commit()
+    conn.close()
+
+def get_history(username):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, gpa, cgpa, total_units, quality_points, semester_label, date_saved 
+        FROM history WHERE username = ? ORDER BY date_saved DESC
+    """, (username,))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete_history(record_id):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM history WHERE id = ?", (record_id,))
+    conn.commit()
+    conn.close()
