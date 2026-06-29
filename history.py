@@ -4,17 +4,14 @@ import pandas as pd
 def show(get_history_func, delete_history_func):
     st.title("Calculation History")
     
-    # Retrieve all logged calculations
     history_data = get_history_func(st.session_state.username)
     
     if history_data:
-        # Map raw SQLite tuples into a structured DataFrame
         df = pd.DataFrame(
             history_data, 
             columns=["Record ID", "GPA", "CGPA", "Total Units", "Quality Points", "Academic Term", "Date Saved"]
         )
         
-        # Display the main records view (hiding the background database ID)
         st.subheader("Saved Academic Standings")
         st.dataframe(
             df.drop(columns=["Record ID"]), 
@@ -24,10 +21,8 @@ def show(get_history_func, delete_history_func):
         
         st.divider()
         
-        # Management panel for deleting specific logs
         st.subheader("Manage Logs")
         with st.expander("Delete an Academic Record"):
-            # Create clear drop-down labels combining the saved date and term
             record_options = {
                 f"{row[5]} (Saved on {row[6]})": row[0] for row in history_data
             }
