@@ -1,156 +1,75 @@
 import streamlit as st
-import pandas as pd
-import io
-import database
 
-def show():
-    try:
-        st.image("assets/cosmas_banner.png", use_container_width=True)
-    except:
-        st.title("🏛️ COSMAS AT SUG TOP SEAT")
-
-    st.title("🎓 CGPA Calculator")
-
-    if "courses" not in st.session_state:
-        st.session_state.courses = []
-
-    st.subheader("Select Academic Period")
-    semester_options = [
-        "100L - First Semester", "100L - Second Semester",
-        "200L - First Semester", "200L - Second Semester",
-        "300L - First Semester", "300L - Second Semester",
-        "400L - First Semester", "400L - Second Semester",
-        "500L - First Semester", "500L - Second Semester"
-    ]
-    selected_semester = st.selectbox("Which semester are you calculating for?", semester_options)
-
-    # Automatically fetch past baselines safely
-    history_data = database.get_history(st.session_state.username)
-    prev_cu = 0
-    prev_qp = 0.0
+def show(get_history_func, save_history_func):
+    st.title("🎓 Academic Analytics Engine")
     
-    if history_data:
-        for row in history_data:
-            if len(row) > 4: # Verify columns exist before adding
-                prev_cu += row[3]
-                prev_qp += row[4]
+    # Matching top tab configuration from screenshot
+    calc_tab, target_tab, analytics_tab = st.tabs([
+        "📊 Multi-Semester Calculator", 
+        "🎯 Target Engine", 
+        "📈 Performance Analytics"
+    ])
+    
+    # Grading reference point layout 
+    grade_points = {"A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0}
 
-    st.info(f"📋 Carried Forward Baseline: {prev_cu} Credit Units | {prev_qp:.2f} Quality Points")
-    st.divider()
-
-    grades = {"A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0}
-
-    with st.form("course_form"):
-        code = st.text_input("Course Code")
-        c1, c2 = st.columns(2)
-        with c1:
-            cu = st.number_input("Credit Units", 1, 6, 3)
-        with c2:
-            grade = st.selectbox("Grade", list(grades.keys()))
-
-        add = st.form_submit_button("➕ Add Course")
-        if add:
-            code = code.strip().upper()
-            if code == "":
-                st.error("Enter a course code.")
-            elif any(x["Course"] == code for x in st.session_state.courses):
-                st.warning("Course already added.")
-            else:
-                st.session_state.courses.append({
-                    "Course": code,
-                    "Credit Units": cu,
-                    "Grade": grade,
-                    "GP": grades[grade],
-                    "Quality Points": cu * grades[grade]
-                })
-                st.success(f"{code} added successfully.")
-
-    if st.session_state.courses:
-        df = pd.DataFrame(st.session_state.courses)
-        total_cu = df["Credit Units"].sum()
-        total_qp = df["Quality Points"].sum()
-
-        semester_gpa = total_qp / total_cu
-        grand_cu = prev_cu + total_cu
-        grand_qp = prev_qp + total_qp
-        cgpa = grand_qp / grand_cu
-
-        st.divider()
-        c1, c2 = st.columns(2)
-        c1.metric(f"{selected_semester} GPA", f"{semester_gpa:.2f}")
-        c2.metric("Cumulative CGPA", f"{cgpa:.2f}")
-
-        if cgpa >= 4.50: st.success("🏆 First Class")
-        elif cgpa >= 3.50: st.info("🥇 Second Class Upper")
-        elif cgpa >= 2.40: st.info("🥈 Second Class Lower")
-        elif cgpa >= 1.50: st.warning("🎓 Third Class")
-        else: st.error("⚠️ Pass")
-
-        st.divider()
-        st.subheader("Courses added to active grid:")
-        st.dataframe(df[["Course", "Credit Units", "Grade", "Quality Points"]], use_container_width=True)
-
-        course = st.selectbox("Delete Course", df["Course"])
-        if st.button("Delete"):
-            st.session_state.courses = [c for c in st.session_state.courses if c["Course"] != course]
-            st.rerun()
-
-        st.divider()
-
-        if st.button("💾 Save Result", use_container_width=True):
-            database.save_history(st.session_state.username, semester_gpa, cgpa, total_cu, total_qp, selected_semester)
-            st.success(f"Calculation for {selected_semester} saved.")
-            st.session_state.courses = []
-            st.rerun()
-
-        st.divider()
-
-        table_rows = "".join([
-            f"<tr><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Course']}</td><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Credit Units']}</td><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Grade']}</td><td style='padding:8px; border-bottom:1px solid #ddd;'>{c['Quality Points']}</td></tr>"
-            for c in st.session_state.courses
-        ])
+    with calc_tab:
+        # Counter line tracking layout
+        num_semesters = st.number_input("Number of Semesters to Calculate", min_value=1, max_value=12, value=1, step=1)
         
-        html_layout = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 3px solid #6b21a8; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div style="text-align: center; background-color: #6b21a8; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0; font-size: 24px;">🏛️ COSMAS AT SUG TOP SEAT</h1>
-                <p style="margin: 5px 0 0 0; font-style: italic; font-size: 14px;">Support • Pray • Canvass</p>
-            </div>
-            <div style="padding: 20px 5px; color: #333;">
-                <p style="margin: 8px 0;"><b>Student Account:</b> {st.session_state.username}</p>
-                <p style="margin: 8px 0;"><b>Academic Stage:</b> {selected_semester}</p>
-                <hr style="border: 0; border-top: 2px solid #6b21a8; margin: 15px 0;">
-                <table style="width: 100%; text-align: left; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #f3e8ff; color: #6b21a8;">
-                            <th style="padding: 10px;">Course Code</th>
-                            <th style="padding: 10px;">Units</th>
-                            <th style="padding: 10px;">Grade</th>
-                            <th style="padding: 10px;">Quality Points</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {table_rows}
-                    </tbody>
-                </table>
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-                <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; padding: 10px 5px; background-color: #fafafa; border-radius: 6px;">
-                    <span style="color: #555;">Semester GPA: {semester_gpa:.2f}</span>
-                    <span style="color: #6b21a8;">Cumulative CGPA: {cgpa:.2f}</span>
-                </div>
-            </div>
-            <div style="text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; font-size: 11px; color: #999;">
-                Official Verification Slip • Cosmas Performance Campaign Portal
-            </div>
-        </div>
-        """
+        running_total_qp = 0.0
+        running_total_cu = 0
+        
+        for s in range(int(num_semesters)):
+            with st.expander(f"📘 Semester {s+1} Configuration", expanded=True):
+                num_courses = st.number_input(f"Number of Courses (Semester {s+1})", min_value=1, max_value=20, value=4, step=1, key=f"num_crs_{s}")
+                
+                sem_qp = 0.0
+                sem_cu = 0
+                
+                # Dynamic inputs loop
+                for c in range(int(num_courses)):
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    
+                    with col1:
+                        st.text_input("Course Code", placeholder="e.g., CHM101", key=f"code_{s}_{c}")
+                    with col2:
+                        units = st.number_input("Units", min_value=1, max_value=6, value=3, step=1, key=f"units_{s}_{c}")
+                    with col3:
+                        grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F"], key=f"grade_{s}_{c}")
+                    
+                    sem_qp += units * grade_points[grade]
+                    sem_cu += units
+                
+                # Semester computations display
+                if sem_cu > 0:
+                    sem_gpa = sem_qp / sem_cu
+                    st.markdown(f"**Semester {s+1} GPA:** `{sem_gpa:.2f}` | **Units Registered:** `{sem_cu}`")
+                    
+                running_total_qp += sem_qp
+                running_total_cu += sem_cu
 
-        st.download_button(
-            "📥 Download Custom Branded Print Slip (HTML)",
-            html_layout,
-            file_name=f"{selected_semester.replace(' ', '')}_slip.html",
-            mime="text/html",
-            use_container_width=True
-        )
-    else:
-        st.info("No courses added yet.")
+        # Summary Computation Metrics Block
+        st.divider()
+        if running_total_cu > 0:
+            final_cgpa = running_total_qp / running_total_cu
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Cumulative Units (CU)", running_total_cu)
+            c2.metric("Total Quality Points (QP)", running_total_qp)
+            c3.metric("Calculated CGPA", f"{final_cgpa:.2f}")
+            
+            label = st.text_input("Provide a label to log this record:", placeholder="e.g., 200L First Semester Split")
+            if st.button("💾 Save to System History Log", use_container_width=True):
+                save_history_func(st.session_state.username, final_cgpa, final_cgpa, running_total_cu, running_total_qp, label if label else "Multi-Term Split")
+                st.success("Calculation successfully added to timeline historical logs!")
+                st.rerun()
+
+    with target_tab:
+        st.subheader("🎯 Goal Optimization Engine")
+        st.write("Determine the metrics required in upcoming terms to reach your graduation targets.")
+        # Target calculator elements can go here
+
+    with analytics_tab:
+        st.subheader("📈 Performance Breakdown Analytics")
+        st.info("Visual breakdowns of historic scores will display here once metrics load.")
