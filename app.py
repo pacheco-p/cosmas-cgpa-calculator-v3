@@ -4,6 +4,7 @@ import dashboard
 import calculator
 import profile
 import history
+import sqlite3
 
 # Initialize App Configurations
 st.set_page_config(page_title="Cosmas CGPA Engine", page_icon="🎓", layout="wide")
@@ -57,7 +58,6 @@ if not st.session_state.authenticated:
         submit = st.form_submit_button("Proceed")
         
         if submit:
-            import sqlite3
             if auth_mode == "Register/Sign Up":
                 if username and password and confirm_password and fullname:
                     # Validate that both password fields match exactly
@@ -69,4 +69,55 @@ if not st.session_state.authenticated:
                         try:
                             conn = sqlite3.connect("users.db")
                             cursor = conn.cursor()
-                            cursor.execute
+                            cursor.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?)", 
+                                           (username, password, fullname, email, matric, dept, level))
+                            conn.commit()
+                            conn.close()
+                            
+                            # IMMEDIATELY FLIP TRACKER TO LOGIN MODE INDEX (0) AND RERUN
+                            st.session_state.auth_mode_index = 0
+                            st.success("Registration successful! Redirecting you to login...")
+                            st.rerun()
+                        except sqlite3.IntegrityError:
+                            st.error("Username already taken.")
+                        except Exception as e:
+                            st.error(f"An unexpected error occurred: {e}")
+                else:
+                    st.error("Please fill out all required fields.")
+            else:
+                # Login Processing
+                conn = sqlite3.connect("users.db")
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+                user_match = cursor.fetchone()
+                conn.close()
+                if user_match:
+                    st.session_state.authenticated = True
+                    st.session_state.username = username
+                    st.rerun()
+                else:
+                    st.error("Invalid Username or Password Credentials.")
+else:
+    # Sidebar Navigation Wrapper
+    st.sidebar.title("Navigation")
+    menu_selection = st.sidebar.radio("Go to:", ["Dashboard", "CGPA Calculator", "History Log", "My Profile"])
+    
+    st.sidebar.divider()
+    if st.sidebar.button("Logout", type="primary", use_container_width=True):
+        st.session_state.authenticated = False
+        st.session_state.username = None
+        if "returning_user" in st.session_state:
+            del st.session_state.returning_user
+        # Reset auth selector position state
+        st.session_state.auth_mode_index = 0
+        st.rerun()
+
+    # Route Content Contexts
+    if menu_selection == "Dashboard":
+        dashboard.show(db.get_statistics, db.get_user_profile)
+    elif menu_selection == "CGPA Calculator":
+        calculator.show(db.get_history, db.save_history, db.get_user_profile)
+    elif menu_selection == "History Log":
+        history.show(db.get_history, db.delete_history)
+    elif menu_selection == "My Profile":
+        profile.show(db.get_user_profile, db.update_user_profile)
