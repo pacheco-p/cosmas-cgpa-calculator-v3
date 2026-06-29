@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ----------------------------------------------------------------
-# CONSOLIDATED DATABASE LAYER (Old database.py)
+# CONSOLIDATED DATABASE LAYER
 # ----------------------------------------------------------------
 conn = sqlite3.connect("users.db", check_same_thread=False)
 cursor = conn.cursor()
@@ -24,7 +24,11 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        fullname TEXT,
+        matric_no TEXT,
+        department TEXT,
+        current_level TEXT
     )
     """)
     cursor.execute("""
@@ -39,24 +43,30 @@ def init_db():
         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-    try:
-        cursor.execute("ALTER TABLE history ADD COLUMN semester_label TEXT;")
-    except sqlite3.OperationalError:
-        pass  
+    # Run migrations seamlessly if columns are missing
+    columns = [col[1] for col in cursor.execute("PRAGMA table_info(users);").fetchall()]
+    if "fullname" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN fullname TEXT;")
+        cursor.execute("ALTER TABLE users ADD COLUMN matric_no TEXT;")
+        cursor.execute("ALTER TABLE users ADD COLUMN department TEXT;")
+        cursor.execute("ALTER TABLE users ADD COLUMN current_level TEXT;")
     conn.commit()
 
 init_db()
 
-def db_create_user(username, email, password):
+def db_create_user(username, email, password, fullname, matric_no, department, current_level):
     try:
-        cursor.execute("INSERT INTO users(username, email, password) VALUES(?,?,?)", (username, email, password))
+        cursor.execute(
+            "INSERT INTO users(username, email, password, fullname, matric_no, department, current_level) VALUES(?,?,?,?,?,?,?)", 
+            (username, email, password, fullname, matric_no, department, current_level)
+        )
         conn.commit()
         return True
     except sqlite3.IntegrityError:
         return False
 
 def db_get_user(username):
-    cursor.execute("SELECT * FROM users WHERE username=?", (username,))
+    cursor.execute("SELECT id, username, email, password, fullname, matric_no, department, current_level FROM users WHERE username=?", (username,))
     return cursor.fetchone()
 
 def db_get_email(email):
@@ -84,7 +94,7 @@ def db_get_statistics(username):
 
 
 # ----------------------------------------------------------------
-# CONSOLIDATED AUTHENTICATION LAYER (Old auth.py)
+# CONSOLIDATED AUTHENTICATION LAYER
 # ----------------------------------------------------------------
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -92,7 +102,7 @@ def hash_password(password):
 def verify_password(password, hashed):
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
-def run_registration(username, email, password):
+def run_registration(username, email, password, fullname, matric_no, department, current_level):
     username = username.strip()
     email = email.strip().lower()
     if db_get_user(username):
@@ -100,7 +110,7 @@ def run_registration(username, email, password):
     if db_get_email(email):
         return False, "Email already exists."
     hashed_password = hash_password(password)
-    db_create_user(username, email, hashed_password)
+    db_create_user(username, email, hashed_password, fullname, matric_no, department, current_level)
     return True, "Account created successfully."
 
 def run_login(username, password):
@@ -111,7 +121,7 @@ def run_login(username, password):
 
 
 # ----------------------------------------------------------------
-# LAZY PAGES IMPORT (Safe from caching anomalies)
+# APP PAGES IMPORTS
 # ----------------------------------------------------------------
 import dashboard
 import calculator
@@ -119,24 +129,8 @@ import history
 import profile
 import settings
 
-# Patch the remaining sub-modules temporarily so they hit our working DB functions
-import sys
-import types
-mock_db = types.ModuleType('database')
-mock_db.get_statistics = db_get_statistics
-mock_db.get_history = db_get_history
-mock_db.get_user = db_get_user
-mock_db.save_history = db_save_history
-mock_db.delete_history = db_delete_history
-sys.modules['database'] = mock_db
-
-
-# ----------------------------------------------------------------
-# SESSION STATE SETUP
-# ----------------------------------------------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-
 if "username" not in st.session_state:
     st.session_state.username = ""
 
@@ -173,6 +167,10 @@ if not st.session_state.logged_in:
         with signup_tab:
             username = st.text_input("Choose Username", key="signup_username")
             email = st.text_input("Email Address")
+            fullname = st.text_input("Full Name (Surname First)")
+            matric_no = st.text_input("Matric Number")
+            department = st.text_input("Department")
+            current_level = st.selectbox("Current Level", ["100L", "200L", "300L", "400L", "500L"])
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm Password", type="password")
 
@@ -181,8 +179,10 @@ if not st.session_state.logged_in:
                     st.error("Passwords do not match.")
                 elif len(password) < 6:
                     st.warning("Password must be at least 6 characters.")
+                elif not fullname or not matric_no or not department:
+                    st.warning("Please fill out all academic information fields.")
                 else:
-                    success, message = run_registration(username, email, password)
+                    success, message = run_registration(username, email, password, fullname, matric_no, department, current_level)
                     if success:
                         st.success(message)
                     else:
@@ -207,14 +207,14 @@ else:
         st.session_state.username = ""
         st.rerun()
 
-    # Routing Engine
+    # Inject functions into pages
     if page == "🏠 Dashboard":
-        dashboard.show()
+        dashboard.show(db_get_statistics, db_get_user)
     elif page == "🎓 CGPA Calculator":
-        calculator.show()
+        calculator.show(db_get_history, db_save_history)
     elif page == "📊 History":
-        history.show()
+        history.show(db_get_history, db_delete_history)
     elif page == "👤 Profile":
-        profile.show()
+        profile.show(db_get_user)
     elif page == "⚙️ Settings":
         settings.show()
