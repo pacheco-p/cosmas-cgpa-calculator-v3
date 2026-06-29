@@ -8,7 +8,6 @@ import pandas as pd
 # ----------------------------------------------------------------
 st.set_page_config(
     page_title="Cosmas CGPA Calculator",
-    page_icon="🎓",
     layout="wide"
 )
 
@@ -43,7 +42,6 @@ def init_db():
         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-    # Run migrations seamlessly if columns are missing
     columns = [col[1] for col in cursor.execute("PRAGMA table_info(users);").fetchall()]
     if "fullname" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN fullname TEXT;")
@@ -144,12 +142,12 @@ if not st.session_state.logged_in:
         try:
             st.image("assets/cosmas_banner.png", use_container_width=True)
         except:
-            st.title("🏛️ COSMAS AT SUG TOP SEAT")
+            st.title("COSMAS AT SUG TOP SEAT")
 
-        st.title("🎓 Cosmas CGPA Calculator")
-        st.caption("Support • Pray • Canvass")
+        st.title("Cosmas CGPA Calculator")
+        st.caption("Support | Pray | Canvass")
 
-        login_tab, signup_tab = st.tabs(["🔑 Login", "📝 Create Account"])
+        login_tab, signup_tab = st.tabs(["Login", "Create Account"])
 
         with login_tab:
             username = st.text_input("Username", key="login_username")
@@ -197,24 +195,23 @@ else:
 
     page = st.sidebar.radio(
         "Navigation",
-        ["🏠 Dashboard", "🎓 CGPA Calculator", "📊 History", "👤 Profile", "⚙️ Settings"]
+        ["Dashboard", "CGPA Calculator", "History", "Profile", "Settings"]
     )
 
     st.sidebar.divider()
 
-    if st.sidebar.button("🚪 Logout", use_container_width=True):
+    if st.sidebar.button("Logout", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.rerun()
 
-    # Inject functions into pages
-    if page == "🏠 Dashboard":
+    if page == "Dashboard":
         dashboard.show(db_get_statistics, db_get_user)
-    elif page == "🎓 CGPA Calculator":
-        calculator.show(db_get_history, db_save_history)
-    elif page == "📊 History":
+    elif page == "CGPA Calculator":
+        calculator.show(db_get_history, db_save_history, db_get_user)
+    elif page == "History":
         history.show(db_get_history, db_delete_history)
-    elif page == "👤 Profile":
+    elif page == "Profile":
         profile.show(db_get_user)
-    elif page == "⚙️ Settings":
+    elif page == "Settings":
         settings.show()
