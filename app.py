@@ -1,233 +1,86 @@
 import streamlit as st
-import sqlite3
-import bcrypt
-import pandas as pd
-
-# ----------------------------------------------------------------
-# PAGE CONFIG
-# ----------------------------------------------------------------
-st.set_page_config(
-    page_title="Cosmas CGPA Calculator",
-    layout="wide"
-)
-
-# ----------------------------------------------------------------
-# CONSOLIDATED DATABASE LAYER
-# ----------------------------------------------------------------
-conn = sqlite3.connect("users.db", check_same_thread=False)
-cursor = conn.cursor()
-
-def init_db():
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        fullname TEXT,
-        matric_no TEXT,
-        department TEXT,
-        current_level TEXT
-    )
-    """)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS history(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        gpa REAL NOT NULL,
-        cgpa REAL NOT NULL,
-        total_cu INTEGER NOT NULL,
-        total_qp REAL NOT NULL,
-        semester_label TEXT,
-        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    # Safe structure check
-    columns = [col[1] for col in cursor.execute("PRAGMA table_info(users);").fetchall()]
-    if "fullname" not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN fullname TEXT;")
-        cursor.execute("ALTER TABLE users ADD COLUMN matric_no TEXT;")
-        cursor.execute("ALTER TABLE users ADD COLUMN department TEXT;")
-        cursor.execute("ALTER TABLE users ADD COLUMN current_level TEXT;")
-    conn.commit()
-
-init_db()
-
-def db_create_user(username, email, password, fullname, matric_no, department, current_level):
-    try:
-        cursor.execute(
-            "INSERT INTO users(username, email, password, fullname, matric_no, department, current_level) VALUES(?,?,?,?,?,?,?)", 
-            (username, email, password, fullname, matric_no, department, current_level)
-        )
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError:
-        return False
-
-def db_get_user(username):
-    cursor.execute("SELECT id, username, email, password, fullname, matric_no, department, current_level FROM users WHERE username=?", (username,))
-    row = cursor.fetchone()
-    if row:
-        # Returning a robust dictionary instead of an index-unstable tuple
-        return {
-            "id": row[0],
-            "username": row[1],
-            "email": row[2],
-            "fullname": row[4],
-            "matric_no": row[5],
-            "department": row[6],
-            "current_level": row[7]
-        }
-    return None
-
-def db_get_email(email):
-    cursor.execute("SELECT * FROM users WHERE email=?", (email,))
-    return cursor.fetchone()
-
-def db_save_history(username, gpa, cgpa, total_cu, total_qp, semester_label):
-    cursor.execute(
-        "INSERT INTO history(username, gpa, cgpa, total_cu, total_qp, semester_label) VALUES(?,?,?,?,?,?)",
-        (username, gpa, cgpa, total_cu, total_qp, semester_label)
-    )
-    conn.commit()
-
-def db_get_history(username):
-    cursor.execute("SELECT id, gpa, cgpa, total_cu, total_qp, semester_label, date FROM history WHERE username=? ORDER BY date DESC", (username,))
-    return cursor.fetchall()
-
-def db_delete_history(record_id):
-    cursor.execute("DELETE FROM history WHERE id=?", (record_id,))
-    conn.commit()
-
-def db_get_statistics(username):
-    cursor.execute("SELECT COUNT(*), MAX(cgpa), AVG(cgpa) FROM history WHERE username=?", (username,))
-    return cursor.fetchone()
-
-
-# ----------------------------------------------------------------
-# CONSOLIDATED AUTHENTICATION LAYER
-# ----------------------------------------------------------------
-def hash_password(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-def verify_password(password, hashed):
-    return bcrypt.checkpw(password.encode(), hashed.encode())
-
-def run_registration(username, email, password, fullname, matric_no, department, current_level):
-    username = username.strip()
-    email = email.strip().lower()
-    if db_get_user(username):
-        return False, "Username already exists."
-    if db_get_email(email):
-        return False, "Email already exists."
-    hashed_password = hash_password(password)
-    db_create_user(username, email, hashed_password, fullname, matric_no, department, current_level)
-    return True, "Account created successfully."
-
-def run_login(username, password):
-    user = db_get_user(username)
-    if user is None:
-        return False
-    # Fetch password directly from database query check
-    cursor.execute("SELECT password FROM users WHERE username=?", (username,))
-    db_pass = cursor.fetchone()[0]
-    return verify_password(password, db_pass)
-
-
-# ----------------------------------------------------------------
-# APP PAGES IMPORTS
-# ----------------------------------------------------------------
+import database as db
 import dashboard
 import calculator
-import history
 import profile
-import settings
+import history
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+# Initialize App Configurations
+st.set_page_config(page_title="Cosmas CGPA Engine", page_icon="🎓", layout="wide")
+db.init_db()
+
+# Session State Setup
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 if "username" not in st.session_state:
-    st.session_state.username = ""
+    st.session_state.username = None
 
-# ----------------------------------------------------------------
-# UI CONTROLLER
-# ----------------------------------------------------------------
-if not st.session_state.logged_in:
-    col1, col2, col3 = st.columns([1, 2, 1])
-
-    with col2:
-        try:
-            st.image("assets/cosmas_banner.png", use_container_width=True)
-        except:
-            st.title("COSMAS AT SUG TOP SEAT")
-
-        st.title("Cosmas CGPA Calculator")
-        st.caption("Support | Pray | Canvass")
-
-        login_tab, signup_tab = st.tabs(["Login", "Create Account"])
-
-        with login_tab:
-            username = st.text_input("Username", key="login_username")
-            password = st.text_input("Password", type="password", key="login_password")
-
-            if st.button("Login", use_container_width=True):
-                if run_login(username, password):
-                    st.session_state.logged_in = True
+# Simple Auth Gateway
+if not st.session_state.authenticated:
+    st.title("Welcome to Cosmas CGPA Workspace")
+    auth_mode = st.radio("Choose Action", ["Login", "Register/Sign Up"])
+    
+    with st.form("auth_form"):
+        username = st.text_input("Username").strip().lower()
+        password = st.text_input("Password", type="password")
+        
+        if auth_mode == "Register/Sign Up":
+            fullname = st.text_input("Full Name")
+            email = st.text_input("Email Address")
+            matric = st.text_input("Matric Number")
+            dept = st.text_input("Department")
+            level = st.selectbox("Current Level", ["100L", "200L", "300L", "400L", "500L"])
+            
+        submit = st.form_submit_button("Proceed")
+        
+        if submit:
+            import sqlite3
+            if auth_mode == "Register/Sign Up":
+                if username and password and fullname:
+                    try:
+                        conn = sqlite3.connect("users.db")
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?)", 
+                                       (username, password, fullname, email, matric, dept, level))
+                        conn.commit()
+                        conn.close()
+                        st.success("Registration successful! Switch to Login mode.")
+                    except sqlite3.IntegrityError:
+                        st.error("Username already taken.")
+                else:
+                    st.error("Please fill required spaces.")
+            else:
+                conn = sqlite3.connect("users.db")
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+                user_match = cursor.fetchone()
+                conn.close()
+                if user_match:
+                    st.session_state.authenticated = True
                     st.session_state.username = username
-                    st.success("Login Successful!")
                     st.rerun()
                 else:
-                    st.error("Invalid Username or Password.")
-
-        with signup_tab:
-            username = st.text_input("Choose Username", key="signup_username")
-            email = st.text_input("Email Address")
-            fullname = st.text_input("Full Name (Surname First)")
-            matric_no = st.text_input("Matric Number")
-            department = st.text_input("Department")
-            current_level = st.selectbox("Current Level", ["100L", "200L", "300L", "400L", "500L"])
-            password = st.text_input("Password", type="password", key="signup_password")
-            confirm = st.text_input("Confirm Password", type="password")
-
-            if st.button("Create Account", use_container_width=True):
-                if password != confirm:
-                    st.error("Passwords do not match.")
-                elif len(password) < 6:
-                    st.warning("Password must be at least 6 characters.")
-                elif not fullname or not matric_no or not department:
-                    st.warning("Please fill out all academic information fields.")
-                else:
-                    success, message = run_registration(username, email, password, fullname, matric_no, department, current_level)
-                    if success:
-                        st.success(message)
-                    else:
-                        st.error(message)
+                    st.error("Invalid Username or Password Credentials.")
 else:
-    try:
-        st.sidebar.image("assets/cosmas_banner.png", use_container_width=True)
-    except:
-        pass
-
-    st.sidebar.success(f"Welcome, {st.session_state.username}")
-
-    page = st.sidebar.radio(
-        "Navigation",
-        ["Dashboard", "CGPA Calculator", "History", "Profile", "Settings"]
-    )
-
+    # Sidebar Navigation Wrapper
+    st.sidebar.title("Navigation")
+    menu_selection = st.sidebar.radio("Go to:", ["Dashboard", "CGPA Calculator", "History Log", "My Profile"])
+    
     st.sidebar.divider()
-
-    if st.sidebar.button("Logout", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.username = ""
+    if st.sidebar.button("Logout", type="primary", use_container_width=True):
+        # Drop volatile state items
+        st.session_state.authenticated = False
+        st.session_state.username = None
+        if "returning_user" in st.session_state:
+            del st.session_state.returning_user
         st.rerun()
 
-    if page == "Dashboard":
-        dashboard.show(db_get_statistics, db_get_user)
-    elif page == "CGPA Calculator":
-        calculator.show(db_get_history, db_save_history, db_get_user)
-    elif page == "History":
-        history.show(db_get_history, db_delete_history)
-    elif page == "Profile":
-        profile.show(db_get_user)
-    elif page == "Settings":
-        settings.show()
+    # Route Content Contexts Verbatim
+    if menu_selection == "Dashboard":
+        dashboard.show(db.get_statistics, db.get_user_profile)
+    elif menu_selection == "CGPA Calculator":
+        calculator.show(db.get_history, db.save_history, db.get_user_profile)
+    elif menu_selection == "History Log":
+        history.show(db.get_history, db.delete_history)
+    elif menu_selection == "My Profile":
+        profile.show(db.get_user_profile, db.update_user_profile)
