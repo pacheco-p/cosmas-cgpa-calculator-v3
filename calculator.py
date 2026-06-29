@@ -67,10 +67,39 @@ def show(get_history_func, save_history_func, get_user_func):
     with calc_tab:
         st.markdown(f"### 🎯 Current Semester Workspace: **{level_display}**")
         
-        # Show specific alert for direct entry students
+        # Show specific alert for direct entry or fresh high-level accounts
         if profile_level_num > 100 and not has_history:
-            st.warning("👋 **First-Time User Setup:** Since you are in 300L but have no saved history records yet, use the **Prior Academic Standings** section below to type in your final 200L cumulative scores first!")
+            st.warning("👋 **First-Time User Setup:** Since you are in 300L but have no saved history records yet, please check and verify your background standings below before typing your current courses.")
 
+        # --- MOVED UP: PRIOR ACADEMIC STANDINGS (CHRONOLOGICAL FLOW) ---
+        if profile_level_num > 100:
+            st.markdown("### 🏛️ Prior Academic Standings (100L / 200L Base)")
+            st.caption("Provide your cumulative data from previous sessions to ensure your new CGPA scales correctly.")
+            col_prev_1, col_prev_2 = st.columns(2)
+            with col_prev_1:
+                prev_cgpa_val = st.number_input(
+                    f"Your Final Cumulative CGPA before {level_display}", 
+                    min_value=0.0, 
+                    max_value=5.0, 
+                    value=auto_prev_cgpa, 
+                    step=0.01, 
+                    key="locked_prev_cgpa"
+                )
+            with col_prev_2:
+                prev_units_val = st.number_input(
+                    f"Total Passed Credit Units before {level_display}", 
+                    min_value=0, 
+                    value=auto_prev_units, 
+                    step=1, 
+                    key="locked_prev_units"
+                )
+            st.divider()
+        else:
+            prev_cgpa_val = 0.0
+            prev_units_val = 0
+
+        # --- CURRENT SEMESTER CALCULATIONS ---
+        st.markdown(f"### 📝 Active Semester Input Profile")
         num_semesters = st.number_input("Number of Semesters to Calculate for this Session", min_value=1, max_value=2, value=2, step=1)
         
         running_total_qp = 0.0
@@ -116,33 +145,6 @@ def show(get_history_func, save_history_func, get_user_func):
                     st.markdown(f"**Semester GPA:** `{sem_qp / sem_cu:.2f}` | **Units:** `{sem_cu}`")
                 running_total_qp += sem_qp
                 running_total_cu += sem_cu
-
-        # PRIOR ACADEMIC STANDINGS
-        st.markdown("### 🏛️ Prior Academic Standings (100L / 200L Base)")
-        
-        if profile_level_num == 100:
-            st.caption("Fresh tracking instance. No background session totals are applied to 100L calculations.")
-            prev_cgpa_val = 0.0
-            prev_units_val = 0
-        else:
-            col_prev_1, col_prev_2 = st.columns(2)
-            with col_prev_1:
-                prev_cgpa_val = st.number_input(
-                    "Your Final Cumulative CGPA at the end of 200L", 
-                    min_value=0.0, 
-                    max_value=5.0, 
-                    value=auto_prev_cgpa, 
-                    step=0.01, 
-                    key="locked_prev_cgpa"
-                )
-            with col_prev_2:
-                prev_units_val = st.number_input(
-                    "Total Passed Credit Units from 100L + 200L combined", 
-                    min_value=0, 
-                    value=auto_prev_units, 
-                    step=1, 
-                    key="locked_prev_units"
-                )
 
         st.divider()
         
@@ -195,7 +197,6 @@ COMPUTED ACADEMIC MATRIX READOUT:
 COURSE REGISTER PROFILE BREAKDOWN:
 --------------------------------------------------
 """
-            # Include historical manual values into text statement download context if no course logs are found
             if not all_calculated_courses_log and prev_units_val > 0:
                 document_text += f"\n[HISTORICAL BACK LOG DATA]\n  - Inherited Base Units: {prev_units_val} | Starting CGPA: {prev_cgpa_val:.2f}\n"
             
