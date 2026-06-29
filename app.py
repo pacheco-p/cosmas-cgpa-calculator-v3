@@ -6,20 +6,15 @@ import profile
 import history
 import sqlite3
 
-# Initialize App Configurations
 st.set_page_config(page_title="Cosmas CGPA Engine", page_icon="🎓", layout="wide")
 db.init_db()
 
-# Session State Setup
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "username" not in st.session_state:
     st.session_state.username = None
 
-# If not logged in, show the Auth Portal (Login / Registration)
 if not st.session_state.authenticated:
-    
-    # 1. COSMAS BANNER HEADLINER ON AUTHENTICATION PAGE
     try:
         st.image("assets/cosmas_banner.png", use_container_width=True)
     except:
@@ -32,7 +27,6 @@ if not st.session_state.authenticated:
 
     st.title("Welcome to Cosmas CGPA Workspace")
     
-    # Initialize the radio index state to control automatic toggling
     if "auth_mode_index" not in st.session_state:
         st.session_state.auth_mode_index = 0
 
@@ -60,16 +54,14 @@ if not st.session_state.authenticated:
         if submit:
             if auth_mode == "Register/Sign Up":
                 if username and password and confirm_password and fullname and dept:
-                    # Validate that both password fields match exactly
                     if password != confirm_password:
                         st.error("Passwords do not match. Please verify your password entry.")
                     elif len(password) < 6:
                         st.warning("For safety, your password must be at least 6 characters long.")
                     else:
                         try:
-                            # AUTOMATIC CAPITALIZATION APPLIED HERE
-                            formatted_fullname = fullname.strip().title()  # e.g., "John Doe"
-                            formatted_dept = dept.strip().upper()          # e.g., "INDUSTRIAL CHEMISTRY"
+                            formatted_fullname = fullname.strip().title()
+                            formatted_dept = dept.strip().upper()
                             
                             conn = sqlite3.connect("users.db")
                             cursor = conn.cursor()
@@ -78,7 +70,6 @@ if not st.session_state.authenticated:
                             conn.commit()
                             conn.close()
                             
-                            # IMMEDIATELY FLIP TRACKER TO LOGIN MODE INDEX (0) AND RERUN
                             st.session_state.auth_mode_index = 0
                             st.success("Registration successful! Redirecting you to login...")
                             st.rerun()
@@ -89,7 +80,6 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Please fill out all required fields.")
             else:
-                # Login Processing
                 conn = sqlite3.connect("users.db")
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
@@ -102,7 +92,6 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Invalid Username or Password Credentials.")
 else:
-    # Sidebar Navigation Wrapper
     st.sidebar.title("Navigation")
     menu_selection = st.sidebar.radio("Go to:", ["Dashboard", "CGPA Calculator", "History Log", "My Profile"])
     
@@ -112,11 +101,9 @@ else:
         st.session_state.username = None
         if "returning_user" in st.session_state:
             del st.session_state.returning_user
-        # Reset auth selector position state
         st.session_state.auth_mode_index = 0
         st.rerun()
 
-    # Route Content Contexts
     if menu_selection == "Dashboard":
         dashboard.show(db.get_statistics, db.get_user_profile)
     elif menu_selection == "CGPA Calculator":
