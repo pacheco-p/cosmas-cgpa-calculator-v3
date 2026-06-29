@@ -2,27 +2,38 @@ import streamlit as st
 import pandas as pd
 
 def show(get_history_func, delete_history_func):
-    st.title("Historical Record Timelines")
-    history_data = get_history_func(st.session_state.username)
-    
-    if history_data:
+    try:
+        st.image("assets/cosmas_banner.png", use_container_width=True)
+    except:
+        st.markdown("""
+        <div style="background: linear-gradient(90deg, #1e3a8a 0%, #0f172a 100%); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+            <h1 style="color: white; margin: 0; font-family: sans-serif; letter-spacing: 2px;">COSMAS AT SUG TOP SEAT</h1>
+            <p style="color: #cbd5e1; margin: 5px 0 0 0; font-family: sans-serif;">Support • Pray • Canvass</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.title("Calculation History Log")
+    st.markdown("Review and manage your previously saved GPA and CGPA computation records.")
+
+    records = get_history_func(st.session_state.username)
+
+    if records:
         df = pd.DataFrame(
-            history_data, 
-            columns=["Record ID", "GPA", "CGPA", "Total Units", "Quality Points", "Academic Term Log", "Timestamp Saved"]
+            records, 
+            columns=["ID", "GPA", "CGPA", "Total Units", "Quality Points", "Semester Label", "Date Saved"]
         )
-        
-        st.subheader("Logged Calculations Matrix Table")
-        st.dataframe(df.drop(columns=["Record ID"]), use_container_width=True, hide_index=True)
+        st.dataframe(df.drop(columns=["ID"]), use_container_width=True, hide_index=True)
         
         st.divider()
-        st.subheader("Manage System Ledger Cleanups")
-        with st.expander("Remove Academic Standings Entry"):
-            options_map = {f"{r[5]} (Logged {r[6]})": r[0] for r in history_data}
-            selected_key = st.selectbox("Select calculation matrix line to purge:", list(options_map.keys()))
-            
-            if st.button("Purge Entry Data Block", type="primary"):
-                delete_history_func(options_map[selected_key])
-                st.success("Target records removed from dashboard processing logs.")
-                st.rerun()
+        st.subheader("Manage Records")
+        
+        record_options = {f"{row[5]} (CGPA: {row[2]:.2f}) - {row[6]}": row[0] for row in records}
+        selected_record = st.selectbox("Select a calculation record to delete:", list(record_options.keys()))
+        
+        if st.button("Delete Selected Record", type="primary"):
+            record_id = record_options[selected_record]
+            delete_history_func(record_id)
+            st.success("Record deleted successfully!")
+            st.rerun()
     else:
-        st.info("No timeline metrics logged on this profile yet.")
+        st.info("No saved computation history found. Go to the CGPA Calculator to save your logs.")
