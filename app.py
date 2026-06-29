@@ -96,17 +96,21 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Invalid Username or Password Credentials.")
 else:
-    # COMPACT SQUARE SIDEBAR BRANDING
+    # NORMAL HORIZONTAL COSMAS BANNER ON SIDEBAR
+    try:
+        st.sidebar.image("assets/cosmas_banner.png", use_container_width=True)
+    except:
+        st.sidebar.markdown("""
+        <div style="background: linear-gradient(90deg, #1e3a8a 0%, #0f172a 100%); padding: 15px; border-radius: 6px; text-align: center; margin-bottom: 10px;">
+            <b style="color: white; margin: 0; font-family: sans-serif; font-size: 12px; letter-spacing: 1px;">COSMAS AT SUG TOP SEAT</b>
+        </div>
+        """, unsafe_allow_html=True)
+        
     st.sidebar.markdown("""
-        <div style="text-align: center; margin-bottom: 10px;">
-            <div style="width: 75px; height: 75px; border-radius: 6px; background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 3px; display: inline-block; box-shadow: 0 2px 6px rgba(0,0,0,0.25);">
-                <img src="https://img.icons8.com/fluent-solid/80/ffffff/student-male.png" style="width: 100%; height: 100%; border-radius: 4px; object-fit: cover; background-color: #1e293b;" alt="Cosmas Campaign">
-            </div>
-            <div style="display: block; margin-top: 6px;">
-                <span style="background-color: #e11d48; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">
-                    ★ Vote for Cosmas ★
-                </span>
-            </div>
+        <div style="text-align: center; margin-bottom: 15px; margin-top: -5px;">
+            <span style="background-color: #e11d48; color: white; padding: 2px 10px; border-radius: 4px; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">
+                ★ Vote for Cosmas ★
+            </span>
         </div>
         """, unsafe_allow_html=True)
     
