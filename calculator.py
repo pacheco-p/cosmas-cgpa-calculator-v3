@@ -11,19 +11,14 @@ def show(get_history_func, save_history_func, get_user_func):
     
     grade_points = {"A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0}
 
-    # Fetch User Profile to identify their Level context
-    user_data = get_user_func(st.session_state.username)
-    current_level = "100L"
-    if user_data:
-        current_level = user_data[7] # Grab level string (e.g., '300L')
+    user = get_user_func(st.session_state.username)
+    current_level = user["current_level"] if user else "100L"
 
-    # Parse numeric value of current level
     try:
         user_level_num = int(current_level.replace("L", ""))
     except:
         user_level_num = 100
 
-    # Base reference matrix mapping levels to chronological order
     all_semesters_pool = [
         {"level": 100, "term": "First Semester"}, {"level": 100, "term": "Second Semester"},
         {"level": 200, "term": "First Semester"}, {"level": 200, "term": "Second Semester"},
@@ -46,15 +41,11 @@ def show(get_history_func, save_history_func, get_user_func):
             sem_level = sem_info["level"]
             sem_term = sem_info["term"]
 
-            # Dynamic Session Predictor Calculation Engine
-            # Current 100L in 2026 corresponds to 2025/2026 session.
-            # Delta maps back entries relative to their difference from user's current level tier.
             level_difference = (user_level_num - sem_level) // 100
             start_year = 2025 - level_difference
             end_year = 2026 - level_difference
             predicted_session = f"{start_year}/{end_year}"
 
-            # Formatted Header Label
             display_label = f"{sem_level}L - {sem_term} ({predicted_session} Session)"
 
             with st.expander(display_label, expanded=True):
