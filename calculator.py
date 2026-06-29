@@ -24,14 +24,42 @@ def show(get_history_func, save_history_func, get_user_func):
     if "course_queue" not in st.session_state:
         st.session_state.course_queue = []
 
+    # --- AUTOMATIC BACKGROUND HISTORY LOADING ---
+    # Fetch all previous records saved by this user
+    user_history = get_history_func(st.session_state.username)
+    
+    auto_prev_units = 0
+    auto_prev_qp = 0.0
+
+    # If they have a history, find their most recent snapshot to pre-populate defaults
+    if user_history and len(user_history) > 0:
+        # Assuming the last saved entry contains their latest cumulative metrics
+        latest_record = user_history[-1]
+        
+        # Depending on your DB schema index structure:
+        # record[3] = Total Cumulative Units, record[4] = Total Cumulative QP
+        try:
+            auto_prev_units = int(latest_record[3])
+            auto_prev_qp = float(latest_record[4])
+        except (ValueError, IndexError):
+            pass
+
     with calc_tab:
         # --- PREVIOUS ACADEMIC RECORD SECTION ---
         st.subheader("Previous Academic Record")
+        
+        if auto_prev_units > 0:
+            st.caption(f"🔄 **Automatically loaded your latest saved history record ({auto_prev_units} Units background data).**")
+        else:
+            st.caption("No previous records found in history. Enter your past metrics below if you are in 200L or above.")
+
         col_prev_cu, col_prev_qp = st.columns(2)
         with col_prev_cu:
-            prev_units = st.number_input("Previous Credit Units", min_value=0, value=0, step=1, key="prev_units_input")
+            # Value now dynamically defaults to their history instead of flat 0!
+            prev_units = st.number_input("Previous Credit Units", min_value=0, value=auto_prev_units, step=1, key="prev_units_input")
         with col_prev_qp:
-            prev_qp = st.number_input("Previous Quality Points", min_value=0.0, value=0.0, step=1.0, key="prev_qp_input")
+            # Value now dynamically defaults to their history instead of flat 0.0!
+            prev_qp = st.number_input("Previous Quality Points", min_value=0.0, value=auto_prev_qp, step=1.0, key="prev_qp_input")
             
         st.divider()
         
@@ -110,6 +138,8 @@ def show(get_history_func, save_history_func, get_user_func):
                         f"Compiled Record ({total_cumulative_cu} CU)"
                     )
                     st.success("Standings committed to tracker ledger database successfully!")
+                    st.session_state.course_queue = [] # Clear queue after saving
+                    st.rerun()
         else:
             st.info("Enter your cumulative parameters above or add running semester lines to generate stats visualization results.")
 
@@ -120,9 +150,12 @@ def show(get_history_func, save_history_func, get_user_func):
         
         t_col1, t_col2 = st.columns(2)
         with t_col1:
-            current_cgpa_input = st.number_input("What is your current CGPA right now?", min_value=0.0, max_value=5.0, value=3.5, step=0.01, key="target_curr_cgpa")
-            # --- FIXED QUOTES TYPO HERE ---
-            total_units_passed = st.number_input("Total credit units completed so far?", min_value=1, value=60, step=1, key="target_units_passed")
+            # We can also pre-fill the target tab using their loaded history values!
+            default_target_cgpa = (auto_prev_qp / auto_prev_units) if auto_prev_units > 0 else 3.5
+            default_target_units = auto_prev_units if auto_prev_units > 0 else 60
+
+            current_cgpa_input = st.number_input("What is your current CGPA right now?", min_value=0.0, max_value=5.0, value=default_target_cgpa, step=0.01, key="target_curr_cgpa")
+            total_units_passed = st.number_input("Total credit units completed so far?", min_value=1, value=default_target_units, step=1, key="target_units_passed")
         with t_col2:
             target_cgpa_goal = st.number_input("What is your target/goal CGPA?", min_value=0.0, max_value=5.0, value=4.0, step=0.01, key="target_goal_cgpa")
             upcoming_units_load = st.number_input("Total credit units you are taking next semester?", min_value=1, value=20, step=1, key="target_upcoming_load")
@@ -145,7 +178,6 @@ def show(get_history_func, save_history_func, get_user_func):
     # HISTORY ANALYTICS VISUALIZER
     with analytics_tab:
         st.subheader("📈 Your Progress Chart")
-        user_history = get_history_func(st.session_state.username)
         if user_history and len(user_history) > 0:
             import pandas as pd
             data_points = [{"Entry Point": item[5] if item[5] else f"Saved Record {idx+1}", "CGPA": float(item[2])} for idx, item in enumerate(user_history)]
