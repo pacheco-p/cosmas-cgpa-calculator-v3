@@ -13,6 +13,7 @@ def show(get_history_func, save_history_func, get_user_func):
         """, unsafe_allow_html=True)
 
     st.title("CGPA Calculator & Tracker")
+    st.markdown("Calculate your GPA across semesters, track your progress, and set your graduation targets easily.")
     
     calc_tab, target_tab, analytics_tab = st.tabs([
         "🧮 Calculate GPA", "🎯 Set Target Goal", "📈 View Progress History"
@@ -205,7 +206,7 @@ Course Breakdown:
     # TARGET ENGINE TIMELINE
     with target_tab:
         st.subheader("🎯 Set Your Graduation Target Goal")
-        st.p("Find out exactly what GPA you need to hit next semester to reach your target goal.")
+        st.markdown("Find out exactly what GPA you need to hit next semester to reach your target goal.")
         
         t_col1, t_col2 = st.columns(2)
         with t_col1:
@@ -230,7 +231,7 @@ Course Breakdown:
             else:
                 st.info(f"Target Acquired! To hit your goal of **{target_cgpa_goal:.2f}**, you need to get an average GPA of **{required_semester_gpa:.2f}** in your courses next semester.")
 
-    # HISTORY ANALYTICS VISUALIZER
+    # HISTORY ANALYTUALS VISUALIZER
     with analytics_tab:
         st.subheader("📈 Your Progress Chart")
         if history_records and len(history_records) > 0:
