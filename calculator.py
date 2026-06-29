@@ -41,7 +41,7 @@ def show(get_history_func, save_history_func, get_user_func):
         
         running_total_qp = 0.0
         running_total_cu = 0
-        all_calculated_courses_log = [] # Tracked list container to build the document download string
+        all_calculated_courses_log = []
         
         for s in range(int(num_semesters)):
             if s >= len(all_semesters_pool): break
@@ -72,12 +72,12 @@ def show(get_history_func, save_history_func, get_user_func):
                     sem_qp += units * grade_points[grade]
                     sem_cu += units
                     
-                    # Log active rows into data dictionary
                     all_calculated_courses_log.append({
                         "semester_label": display_label,
                         "code": code if code.strip() else "UNNAMED",
                         "units": units,
-                        "grade": grade
+                        "grade": grade,
+                        "level": sem_level
                     })
                 
                 if sem_cu > 0:
@@ -85,7 +85,21 @@ def show(get_history_func, save_history_func, get_user_func):
                 running_total_qp += sem_qp
                 running_total_cu += sem_cu
 
+        st.markdown("### Previous Academic Standings (Editable)")
+        col_prev_1, col_prev_2 = st.columns(2)
+        with col_prev_1:
+            # Fixed variable handling so you can go back and edit without errors
+            prev_cgpa_val = st.number_input("Input/Edit Previous CGPA", min_value=0.0, max_value=5.0, value=0.0, step=0.01, key="editable_prev_cgpa")
+        with col_prev_2:
+            prev_units_val = st.number_input("Input/Edit Total Earned Units before this session", min_value=0, value=0, step=1, key="editable_prev_units")
+
         st.divider()
+        
+        # Incorporate previous standings if inputted
+        if prev_units_val > 0:
+            running_total_qp += (prev_cgpa_val * prev_units_val)
+            running_total_cu += prev_units_val
+
         if running_total_cu > 0:
             final_cgpa = running_total_qp / running_total_cu
             c1, c2, c3 = st.columns(3)
@@ -93,7 +107,18 @@ def show(get_history_func, save_history_func, get_user_func):
             c2.metric("Total Quality Points (QP)", running_total_qp)
             c3.metric("Calculated CGPA", f"{final_cgpa:.2f}")
             
-            label = st.text_input("Record Name/Label:", placeholder="e.g. 200L Finished Standings")
+            # Level Up Congratulatory Logic Check
+            highest_calculated_level = max([c["level"] for c in all_calculated_courses_log]) if all_calculated_courses_log else 100
+            if highest_calculated_level == 100 and running_total_cu > 12:
+                st.balloons()
+                st.markdown(f"""
+                <div style="background-color: #1e3a8a; border-left: 5px solid #3b82f6; padding: 15px; border-radius: 4px; margin: 15px 0;">
+                    <h4 style="color: white; margin: 0;">🎉 100Level Completed!</h4>
+                    <p style="color: #93c5fd; margin: 5px 0 0 0;">Successfully moved to the next level. Let's keep building the academic momentum under Cosmas' leadership mandate!</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            label = st.text_input("Record Name/Label:", placeholder="e.g. 100L Finished Standings")
             
             if st.button("Save Record Tracking Line", use_container_width=True):
                 save_history_func(st.session_state.username, final_cgpa, final_cgpa, running_total_cu, running_total_qp, label if label else "Manual Calculation Log")
@@ -111,7 +136,6 @@ def show(get_history_func, save_history_func, get_user_func):
 
             final_label = label.strip() if label.strip() else "Multi-Semester Evaluation"
             
-            # Construct formatted text payload layout
             document_text = f"""==================================================
 COSMAS ACADEMIC WORKSPACE REPORT
 ==================================================
@@ -160,11 +184,61 @@ Powered by Cosmas and Team
                 use_container_width=True
             )
 
-    # Placeholders for targets and analytics views
+    # ACTIVE TARGET ENGINE COMPONENT
     with target_tab:
-        st.subheader("Target Engine Optimization Hub")
-        st.markdown("Set milestones to project what grade points you require in your upcoming sessions.")
+        st.subheader("🎯 Cosmas Target Engine Optimization Hub")
+        st.markdown("Calculate exactly what grades you need in your upcoming semesters to hit your dream graduation class.")
+        
+        t_col1, t_col2 = st.columns(2)
+        with t_col1:
+            current_cgpa_input = st.number_input("Your Current CGPA", min_value=0.0, max_value=5.0, value=3.0, step=0.01)
+            total_units_passed = st.number_input("Total Credit Units Completed So Far", min_value=1, value=40, step=1)
+        with t_col2:
+            target_cgpa_goal = st.number_input("Your Target/Goal CGPA", min_value=0.0, max_value=5.0, value=4.5, step=0.01)
+            upcoming_units_load = st.number_input("Total Credit Units to Take Next Semester", min_value=1, value=24, step=1)
+            
+        if st.button("Run Projection Matrix Target", type="primary", use_container_width=True):
+            current_points = current_cgpa_input * total_units_passed
+            combined_units_goal = total_units_passed + upcoming_units_load
+            required_total_points = target_cgpa_goal * combined_units_goal
+            needed_semester_points = required_total_points - current_points
+            required_semester_gpa = needed_semester_points / upcoming_units_load
+            
+            st.markdown("---")
+            if required_semester_gpa > 5.0:
+                st.error(f"Mathematically out of reach! To hit {target_cgpa_goal:.2f}, you would need a semester GPA of **{required_semester_gpa:.2f}**, which is above the 5.00 limit. Aim for an achievable layout or increase your upcoming load context!")
+            elif required_semester_gpa < 0.0:
+                st.success(f"You are already way ahead! You need a GPA of less than 0.00 to keep your target balance. Keep cruising!")
+            else:
+                st.info(f"Target Acquired! To reach your target CGPA of **{target_cgpa_goal:.2f}** at the end of next semester, you need to hit an average GPA of **{required_semester_gpa:.2f}** across your next {upcoming_units_load} units.")
+                st.markdown("### Suggested Campaign Advice:")
+                st.write("Stay disciplined, make clean study schedules, and let's win together with Cosmas and Team!")
 
+    # ACTIVE PERFORMANCE ANALYTICS HISTORY TRACKER
     with analytics_tab:
-        st.subheader("Performance Analytics Graphing Center")
-        st.markdown("Visual charts mapping out your long term GPA trends will generate here.")
+        st.subheader("📈 Performance Analytics Dashboard")
+        st.markdown("Your saved history line records visualized over time.")
+        
+        history_records = get_history_func(st.session_state.username)
+        
+        if history_records and len(history_records) > 0:
+            import pandas as pd
+            
+            # Format history list data elements into structured frame rows
+            data_points = []
+            for idx, item in enumerate(history_records):
+                data_points.append({
+                    "Index": idx + 1,
+                    "Label Pin": item[5] if item[5] else f"Record Run {idx+1}",
+                    "CGPA Tracking Line": float(item[2]),
+                    "Units Done": int(item[3])
+                })
+            
+            df = pd.DataFrame(data_points)
+            
+            # Display tracking metrics data grid table views
+            st.dataframe(df[["Label Pin", "CGPA Tracking Line", "Units Done"]], use_container_width=True)
+            st.markdown("### CGPA Progression Timeline Graphic")
+            st.line_chart(data=df, x="Label Pin", y="CGPA Tracking Line")
+        else:
+            st.warning("No tracking records synced found in your history log yet. Compute a calculation matrix in the first tab and save your logs to unlock detailed metrics line charts here!")
