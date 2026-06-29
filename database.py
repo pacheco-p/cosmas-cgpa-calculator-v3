@@ -3,7 +3,6 @@ import sqlite3
 def init_db():
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
-    # Users table matching automatic capitalization expectations
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
@@ -15,7 +14,6 @@ def init_db():
             current_level TEXT
         )
     """)
-    # History tracking table for CGPA progress and metrics
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +45,6 @@ def update_user_profile(username, fullname, email, matric_no, department, curren
         conn = sqlite3.connect("users.db")
         cursor = conn.cursor()
         
-        # Keep formatting professional and consistent during updates
         formatted_fullname = fullname.strip().title()
         formatted_dept = department.strip().upper()
         formatted_matric = matric_no.strip().upper()
@@ -91,7 +88,6 @@ def save_history(username, gpa, cgpa, total_units, quality_points, semester_labe
 def get_history(username):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
-    # Pushes descending logs so dashboard snapshot captures recent logs first
     cursor.execute("""
         SELECT id, gpa, cgpa, total_units, quality_points, semester_label, date_saved 
         FROM history WHERE username = ? ORDER BY date_saved DESC
