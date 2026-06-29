@@ -1,19 +1,19 @@
 import sqlite3
 
+# Database connection
 conn = sqlite3.connect("cgpa.db", check_same_thread=False)
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
-# ==========================
+# =========================
 # USERS TABLE
-# ==========================
-
+# =========================
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    email TEXT,
-    password TEXT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
     full_name TEXT,
     matric_number TEXT,
     department TEXT,
@@ -23,14 +23,13 @@ CREATE TABLE IF NOT EXISTS users(
 )
 """)
 
-# ==========================
+# =========================
 # RESULTS TABLE
-# ==========================
-
+# =========================
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS results(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT,
+    username TEXT NOT NULL,
     session TEXT,
     semester TEXT,
     gpa REAL,
@@ -41,19 +40,16 @@ CREATE TABLE IF NOT EXISTS results(
 
 conn.commit()
 
-# ==========================
+# =========================
 # USER FUNCTIONS
-# ==========================
+# =========================
 
 def create_user(username, email, password):
     try:
-        cursor.execute(
-            """
-            INSERT INTO users(username,email,password)
-            VALUES(?,?,?)
-            """,
-            (username, email, password)
-        )
+        cursor.execute("""
+        INSERT INTO users(username,email,password)
+        VALUES(?,?,?)
+        """, (username, email, password))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -68,20 +64,12 @@ def get_user(username):
     return cursor.fetchone()
 
 
-def update_profile(
-    username,
-    full_name,
-    matric_number,
-    department,
-    faculty,
-    level,
-    admission_year
-):
+def update_profile(username, full_name, matric_number,
+                   department, faculty, level, admission_year):
 
     cursor.execute("""
     UPDATE users
-    SET
-        full_name=?,
+    SET full_name=?,
         matric_number=?,
         department=?,
         faculty=?,
@@ -101,17 +89,9 @@ def update_profile(
     conn.commit()
 
 
-def get_profile(username):
-    cursor.execute(
-        "SELECT * FROM users WHERE username=?",
-        (username,)
-    )
-    return cursor.fetchone()
-
-
-# ==========================
+# =========================
 # RESULT FUNCTIONS
-# ==========================
+# =========================
 
 def save_result(username, session, semester, gpa, cgpa):
 
@@ -141,10 +121,8 @@ def get_results(username):
     SELECT *
     FROM results
     WHERE username=?
-    ORDER BY id DESC
-    """, (
-        username,
-    ))
+    ORDER BY created_at DESC
+    """, (username,))
 
     return cursor.fetchall()
 
@@ -167,7 +145,3 @@ def clear_results(username):
     )
 
     conn.commit()
-
-
-def close_connection():
-    conn.close()
