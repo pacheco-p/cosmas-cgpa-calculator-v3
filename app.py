@@ -50,8 +50,8 @@ if not st.session_state.authenticated:
         if auth_mode == "Register/Sign Up":
             confirm_password = st.text_input("Confirm Password", type="password")
             fullname = st.text_input("Full Name")
-            email = st.text_input("Email Address")
-            matric = st.text_input("Matric Number")
+            email = st.text_input("Email Address").strip()
+            matric = st.text_input("Matric Number").strip().upper()
             dept = st.text_input("Department")
             level = st.selectbox("Current Level", ["100L", "200L", "300L", "400L", "500L"])
             
@@ -59,7 +59,7 @@ if not st.session_state.authenticated:
         
         if submit:
             if auth_mode == "Register/Sign Up":
-                if username and password and confirm_password and fullname:
+                if username and password and confirm_password and fullname and dept:
                     # Validate that both password fields match exactly
                     if password != confirm_password:
                         st.error("Passwords do not match. Please verify your password entry.")
@@ -67,10 +67,14 @@ if not st.session_state.authenticated:
                         st.warning("For safety, your password must be at least 6 characters long.")
                     else:
                         try:
+                            # AUTOMATIC CAPITALIZATION APPLIED HERE
+                            formatted_fullname = fullname.strip().title()  # e.g., "John Doe"
+                            formatted_dept = dept.strip().upper()          # e.g., "INDUSTRIAL CHEMISTRY"
+                            
                             conn = sqlite3.connect("users.db")
                             cursor = conn.cursor()
                             cursor.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?)", 
-                                           (username, password, fullname, email, matric, dept, level))
+                                           (username, password, formatted_fullname, email, matric, formatted_dept, level))
                             conn.commit()
                             conn.close()
                             
