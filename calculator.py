@@ -19,43 +19,35 @@ def show(get_history_func, save_history_func, get_user_func):
     ])
     
     grade_points = {"A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0}
-    user = get_user_func(st.session_state.username)
-    current_level = user["current_level"] if user else "100L"
-    user_display_name = user["fullname"] if user else "Student User"
-    user_matric_display = user["matric_no"] if user else "N/A"
-
-    # Fetch history records to see what has already been saved
-    history_records = get_history_func(st.session_state.username)
     
-    # Smart Detection: Determine if previous levels are completed based on history labels
-    has_saved_100l = False
-    has_saved_200l = False
-    auto_prev_cgpa = 0.0
-    auto_prev_units = 0
+    # Fetch User Profile Data to determine active level tracking
+    user = get_user_func(st.session_state.username)
+    current_level_str = user["current_level"] if user and "current_level" in user else "100L"
+    user_display_name = user["fullname"] if user and "fullname" in user else "Student User"
+    user_matric_display = user["matric_no"] if user and "matric_no" in user else "N/A"
 
-    if history_records and len(history_records) > 0:
-        for record in history_records:
-            record_label = record[5].lower() if record[5] else ""
-            if "100l" in record_label:
-                has_saved_100l = True
-                auto_prev_cgpa = float(record[2])
-                auto_prev_units = int(record[3])
-            if "200l" in record_label:
-                has_saved_200l = True
-                auto_prev_cgpa = float(record[2])
-                auto_prev_units = int(record[3])
+    # Convert profile level (e.g., "300L") into a mathematical integer index
+    try:
+        profile_level_num = int(current_level_str.replace("L", ""))
+    except:
+        profile_level_num = 100
 
-    # Dynamically shift the semester pool depending on what is already recorded
-    if has_saved_200l:
-        start_index = 4  # Start directly from 300L
-        current_processing_level = "300L"
-    elif has_saved_100l:
-        start_index = 2  # Start directly from 200L
-        current_processing_level = "200L"
+    # Map profile levels to starting pools
+    # 100L profile calculates 100L; 200L profile calculates 200L, while 100L data shifts to historical balances
+    if profile_level_num == 200:
+        start_index = 2
+        level_display = "200L"
+    elif profile_level_num == 300:
+        start_index = 4
+        level_display = "300L"
+    elif profile_level_num >= 400:
+        start_index = 6
+        level_display = f"{profile_level_num}L"
     else:
-        start_index = 0  # Fresh start from 100L
-        current_processing_level = "100L"
+        start_index = 0
+        level_display = "100L"
 
+    # Full master chronological listing of semesters
     all_semesters_pool = [
         {"level": 100, "term": "First Semester"}, {"level": 100, "term": "Second Semester"},
         {"level": 200, "term": "First Semester"}, {"level": 200, "term": "Second Semester"},
@@ -63,31 +55,38 @@ def show(get_history_func, save_history_func, get_user_func):
         {"level": 400, "term": "First Semester"}, {"level": 400, "term": "Second Semester"}
     ]
 
-    with calc_tab:
-        # Inform the user what session context they are currently computing
-        st.markdown(f"### Current Workspace: **Calculating {current_processing_level}**")
-        if has_saved_100l or has_saved_200l:
-            st.info(f"💡 **Smart Detection Active:** Found saved data in your history. Previous semesters skipped automatically.")
+    # Fetch saved calculations to auto-fill locked previous totals if present
+    history_records = get_history_func(st.session_state.username)
+    auto_prev_cgpa = 0.0
+    auto_prev_units = 0
 
-        num_semesters = st.number_input("Number of Semesters to Calculate for this session", min_value=1, max_value=4, value=2, step=1)
+    if history_records and len(history_records) > 0:
+        # Pull the latest saved snapshot values for previous background standings
+        latest_record = history_records[-1]
+        auto_prev_cgpa = float(latest_record[2])
+        auto_prev_units = int(latest_record[3])
+
+    with calc_tab:
+        st.markdown(f"### 🎯 Current Semester Workspace: **{level_display}**")
+        st.caption(f"Based on your profile settings. To calculate another session, update your current level on the **My Profile** tab.")
+
+        num_semesters = st.number_input("Number of Semesters to Calculate for this Session", min_value=1, max_value=2, value=2, step=1)
         
         running_total_qp = 0.0
         running_total_cu = 0
         all_calculated_courses_log = []
         
+        # Loop through active semesters based on user's level
         for s in range(int(num_semesters)):
             pool_index = start_index + s
             if pool_index >= len(all_semesters_pool): 
-                st.warning("Reached maximum supported semesters in the pool.")
+                st.warning("Workspace limit reached for the current block layout.")
                 break
                 
             sem_info = all_semesters_pool[pool_index]
             sem_level = sem_info["level"]
             sem_term = sem_info["term"]
-
-            predicted_session = f"2025/2026" if sem_level == 100 else f"2026/2027" if sem_level == 200 else f"2027/2028"
-
-            display_label = f"{sem_level}L - {sem_term} ({predicted_session} Session)"
+            display_label = f"{sem_level}L - {sem_term}"
 
             with st.expander(display_label, expanded=True):
                 num_courses = st.number_input(f"Number of Courses", min_value=1, max_value=15, value=4, step=1, key=f"num_crs_{pool_index}")
@@ -96,7 +95,7 @@ def show(get_history_func, save_history_func, get_user_func):
                 for c in range(int(num_courses)):
                     col1, col2, col3 = st.columns([2, 1, 1])
                     with col1: 
-                        code = st.text_input("Course Code", placeholder="CHM201", key=f"code_{pool_index}_{c}")
+                        code = st.text_input("Course Code", placeholder="CHM301", key=f"code_{pool_index}_{c}")
                     with col2: 
                         units = st.number_input("Units", min_value=1, max_value=6, value=3, step=1, key=f"units_{pool_index}_{c}")
                     with col3: 
@@ -118,17 +117,23 @@ def show(get_history_func, save_history_func, get_user_func):
                 running_total_qp += sem_qp
                 running_total_cu += sem_cu
 
-        st.markdown("### Previous Academic Standings (Editable)")
-        st.caption("These fields auto-fill using your history log, but you can change them if you need to fix a mistake.")
-        col_prev_1, col_prev_2 = st.columns(2)
-        with col_prev_1:
-            prev_cgpa_val = st.number_input("Input/Edit Previous CGPA", min_value=0.0, max_value=5.0, value=auto_prev_cgpa, step=0.01, key="editable_prev_cgpa")
-        with col_prev_2:
-            prev_units_val = st.number_input("Input/Edit Total Earned Units before this session", min_value=0, value=auto_prev_units, step=1, key="editable_prev_units")
+        # LOCKED BACKUP ENGINE FOR PREVIOUS STANDINGS
+        st.markdown("### 🔒 Prior Academic Standings (Locked Base)")
+        if profile_level_num == 100:
+            st.caption("Fresh tracking instance. No background session totals are applied to 100L calculations.")
+            prev_cgpa_val = 0.0
+            prev_units_val = 0
+        else:
+            st.caption("These historical stats are safely brought forward from your prior entries. Use the fields below if you need to override or edit them.")
+            col_prev_1, col_prev_2 = st.columns(2)
+            with col_prev_1:
+                prev_cgpa_val = st.number_input("Edit Previous Cumulative CGPA Base", min_value=0.0, max_value=5.0, value=auto_prev_cgpa, step=0.01, key="locked_prev_cgpa")
+            with col_prev_2:
+                prev_units_val = st.number_input("Edit Total Previous Units Base", min_value=0, value=auto_prev_units, step=1, key="locked_prev_units")
 
         st.divider()
         
-        # Merge previous calculations with current active input variables
+        # Inject background level units into calculation engine
         if prev_units_val > 0:
             running_total_qp += (prev_cgpa_val * prev_units_val)
             running_total_cu += prev_units_val
@@ -140,51 +145,32 @@ def show(get_history_func, save_history_func, get_user_func):
             c2.metric("Total Quality Points (QP)", running_total_qp)
             c3.metric("Calculated CGPA", f"{final_cgpa:.2f}")
             
-            # Level Milestone Status Upgrades
-            highest_calculated_level = max([c["level"] for c in all_calculated_courses_log]) if all_calculated_courses_log else 100
-            
-            if highest_calculated_level == 100 and running_total_cu > 12:
-                st.balloons()
-                st.markdown("""
-                <div style="background-color: #1e3a8a; border-left: 5px solid #3b82f6; padding: 15px; border-radius: 4px; margin: 15px 0;">
-                    <h4 style="color: white; margin: 0;">🎉 100Level Completed!</h4>
-                    <p style="color: #93c5fd; margin: 5px 0 0 0;">Successfully moved to the next level. Let's keep building the academic momentum under Cosmas' leadership mandate!</p>
-                </div>
-                """, unsafe_allow_html=True)
-            elif highest_calculated_level == 200:
-                st.balloons()
-                st.markdown("""
-                <div style="background-color: #15803d; border-left: 5px solid #22c55e; padding: 15px; border-radius: 4px; margin: 15px 0;">
-                    <h4 style="color: white; margin: 0;">🚀 200Level Completed!</h4>
-                    <p style="color: #bbf7d0; margin: 5px 0 0 0;">Incredible progress! You have moved smoothly into the next tier. Powered by Cosmas and Team.</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-            label = st.text_input("Record Name/Label:", placeholder=f"e.g., Finished {current_processing_level} Summary")
-            
-            if st.button("Save Record Tracking Line", use_container_width=True):
-                save_history_func(st.session_state.username, final_cgpa, final_cgpa, running_total_cu, running_total_qp, label if label else f"{current_processing_level} Calculation Log")
-                st.success("Calculations synchronized successfully.")
+            # BLOOM BLOOM CELEBRATION TRIGGER
+            if st.button("Save & Complete This Session Record", use_container_width=True):
+                st.balloons() # The bloom bloom celebration is preserved!
+                save_history_func(
+                    st.session_state.username, 
+                    final_cgpa, 
+                    final_cgpa, 
+                    running_total_cu, 
+                    running_total_qp, 
+                    f"{level_display} Official Standing Record"
+                )
+                st.success(f"Session data compiled successfully! If you are moving to the next level, update your level setting under 'My Profile'.")
                 st.rerun()
 
             # BRANDED DOCUMENT DOWNLOAD COMPONENT
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("""
-                <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 20px; border-radius: 10px; border: 1px dashed #4338ca; text-align: center;">
-                    <h4 style="color: #ffffff; margin-top: 0; font-family: sans-serif;">📥 Download Your Verified Academic Document</h4>
-                    <p style="color: #94a3b8; font-size: 13px; margin-bottom: 0px;">Generate an official summary breakdown report featuring Cosmas campaign verification badges.</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-            final_label = label.strip() if label.strip() else f"{current_processing_level} Evaluation"
+            document_label = f"{level_display} Academic Performance Summary"
             
+            # Text output payload logic remains identical
             document_text = f"""==================================================
 COSMAS ACADEMIC WORKSPACE REPORT
 ==================================================
 Verified Evaluation Performance Sheet
 Generated for: {user_display_name}
 Matric Number: {user_matric_display}
-Record Context: {final_label}
+Record Context: {document_label}
 
 --------------------------------------------------
 COMPUTED ACADEMIC MATRIX READOUT:
@@ -221,7 +207,7 @@ Powered by Cosmas and Team
             st.download_button(
                 label="Download Certified Result Document (TXT)",
                 data=document_text,
-                file_name=f"Cosmas_CGPA_Report_{final_label.replace(' ', '_')}.txt",
+                file_name=f"Cosmas_CGPA_Report_{level_display}.txt",
                 mime="text/plain",
                 use_container_width=True
             )
