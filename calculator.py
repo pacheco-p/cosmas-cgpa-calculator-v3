@@ -24,10 +24,37 @@ def show(get_history_func, save_history_func, get_user_func):
     user_display_name = user["fullname"] if user else "Student User"
     user_matric_display = user["matric_no"] if user else "N/A"
 
-    try:
-        user_level_num = int(current_level.replace("L", ""))
-    except:
-        user_level_num = 100
+    # Fetch history records to see what has already been saved
+    history_records = get_history_func(st.session_state.username)
+    
+    # Smart Detection: Determine if previous levels are completed based on history labels
+    has_saved_100l = False
+    has_saved_200l = False
+    auto_prev_cgpa = 0.0
+    auto_prev_units = 0
+
+    if history_records and len(history_records) > 0:
+        for record in history_records:
+            record_label = record[5].lower() if record[5] else ""
+            if "100l" in record_label:
+                has_saved_100l = True
+                auto_prev_cgpa = float(record[2])
+                auto_prev_units = int(record[3])
+            if "200l" in record_label:
+                has_saved_200l = True
+                auto_prev_cgpa = float(record[2])
+                auto_prev_units = int(record[3])
+
+    # Dynamically shift the semester pool depending on what is already recorded
+    if has_saved_200l:
+        start_index = 4  # Start directly from 300L
+        current_processing_level = "300L"
+    elif has_saved_100l:
+        start_index = 2  # Start directly from 200L
+        current_processing_level = "200L"
+    else:
+        start_index = 0  # Fresh start from 100L
+        current_processing_level = "100L"
 
     all_semesters_pool = [
         {"level": 100, "term": "First Semester"}, {"level": 100, "term": "Second Semester"},
@@ -37,37 +64,43 @@ def show(get_history_func, save_history_func, get_user_func):
     ]
 
     with calc_tab:
-        num_semesters = st.number_input("Number of Semesters to Calculate", min_value=1, max_value=8, value=1, step=1)
+        # Inform the user what session context they are currently computing
+        st.markdown(f"### Current Workspace: **Calculating {current_processing_level}**")
+        if has_saved_100l or has_saved_200l:
+            st.info(f"💡 **Smart Detection Active:** Found saved data in your history. Previous semesters skipped automatically.")
+
+        num_semesters = st.number_input("Number of Semesters to Calculate for this session", min_value=1, max_value=4, value=2, step=1)
         
         running_total_qp = 0.0
         running_total_cu = 0
         all_calculated_courses_log = []
         
         for s in range(int(num_semesters)):
-            if s >= len(all_semesters_pool): break
-            sem_info = all_semesters_pool[s]
+            pool_index = start_index + s
+            if pool_index >= len(all_semesters_pool): 
+                st.warning("Reached maximum supported semesters in the pool.")
+                break
+                
+            sem_info = all_semesters_pool[pool_index]
             sem_level = sem_info["level"]
             sem_term = sem_info["term"]
 
-            level_difference = (user_level_num - sem_level) // 100
-            start_year = 2025 - level_difference
-            end_year = 2026 - level_difference
-            predicted_session = f"{start_year}/{end_year}"
+            predicted_session = f"2025/2026" if sem_level == 100 else f"2026/2027" if sem_level == 200 else f"2027/2028"
 
             display_label = f"{sem_level}L - {sem_term} ({predicted_session} Session)"
 
             with st.expander(display_label, expanded=True):
-                num_courses = st.number_input(f"Number of Courses", min_value=1, max_value=15, value=4, step=1, key=f"num_crs_{s}")
+                num_courses = st.number_input(f"Number of Courses", min_value=1, max_value=15, value=4, step=1, key=f"num_crs_{pool_index}")
                 sem_qp, sem_cu = 0.0, 0
                 
                 for c in range(int(num_courses)):
                     col1, col2, col3 = st.columns([2, 1, 1])
                     with col1: 
-                        code = st.text_input("Course Code", placeholder="CHM101", key=f"code_{s}_{c}")
+                        code = st.text_input("Course Code", placeholder="CHM201", key=f"code_{pool_index}_{c}")
                     with col2: 
-                        units = st.number_input("Units", min_value=1, max_value=6, value=3, step=1, key=f"units_{s}_{c}")
+                        units = st.number_input("Units", min_value=1, max_value=6, value=3, step=1, key=f"units_{pool_index}_{c}")
                     with col3: 
-                        grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F"], key=f"grade_{s}_{c}")
+                        grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F"], key=f"grade_{pool_index}_{c}")
                     
                     sem_qp += units * grade_points[grade]
                     sem_cu += units
@@ -86,16 +119,16 @@ def show(get_history_func, save_history_func, get_user_func):
                 running_total_cu += sem_cu
 
         st.markdown("### Previous Academic Standings (Editable)")
+        st.caption("These fields auto-fill using your history log, but you can change them if you need to fix a mistake.")
         col_prev_1, col_prev_2 = st.columns(2)
         with col_prev_1:
-            # Fixed variable handling so you can go back and edit without errors
-            prev_cgpa_val = st.number_input("Input/Edit Previous CGPA", min_value=0.0, max_value=5.0, value=0.0, step=0.01, key="editable_prev_cgpa")
+            prev_cgpa_val = st.number_input("Input/Edit Previous CGPA", min_value=0.0, max_value=5.0, value=auto_prev_cgpa, step=0.01, key="editable_prev_cgpa")
         with col_prev_2:
-            prev_units_val = st.number_input("Input/Edit Total Earned Units before this session", min_value=0, value=0, step=1, key="editable_prev_units")
+            prev_units_val = st.number_input("Input/Edit Total Earned Units before this session", min_value=0, value=auto_prev_units, step=1, key="editable_prev_units")
 
         st.divider()
         
-        # Incorporate previous standings if inputted
+        # Merge previous calculations with current active input variables
         if prev_units_val > 0:
             running_total_qp += (prev_cgpa_val * prev_units_val)
             running_total_cu += prev_units_val
@@ -107,21 +140,30 @@ def show(get_history_func, save_history_func, get_user_func):
             c2.metric("Total Quality Points (QP)", running_total_qp)
             c3.metric("Calculated CGPA", f"{final_cgpa:.2f}")
             
-            # Level Up Congratulatory Logic Check
+            # Level Milestone Status Upgrades
             highest_calculated_level = max([c["level"] for c in all_calculated_courses_log]) if all_calculated_courses_log else 100
+            
             if highest_calculated_level == 100 and running_total_cu > 12:
                 st.balloons()
-                st.markdown(f"""
+                st.markdown("""
                 <div style="background-color: #1e3a8a; border-left: 5px solid #3b82f6; padding: 15px; border-radius: 4px; margin: 15px 0;">
                     <h4 style="color: white; margin: 0;">🎉 100Level Completed!</h4>
                     <p style="color: #93c5fd; margin: 5px 0 0 0;">Successfully moved to the next level. Let's keep building the academic momentum under Cosmas' leadership mandate!</p>
                 </div>
                 """, unsafe_allow_html=True)
+            elif highest_calculated_level == 200:
+                st.balloons()
+                st.markdown("""
+                <div style="background-color: #15803d; border-left: 5px solid #22c55e; padding: 15px; border-radius: 4px; margin: 15px 0;">
+                    <h4 style="color: white; margin: 0;">🚀 200Level Completed!</h4>
+                    <p style="color: #bbf7d0; margin: 5px 0 0 0;">Incredible progress! You have moved smoothly into the next tier. Powered by Cosmas and Team.</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-            label = st.text_input("Record Name/Label:", placeholder="e.g. 100L Finished Standings")
+            label = st.text_input("Record Name/Label:", placeholder=f"e.g., Finished {current_processing_level} Summary")
             
             if st.button("Save Record Tracking Line", use_container_width=True):
-                save_history_func(st.session_state.username, final_cgpa, final_cgpa, running_total_cu, running_total_qp, label if label else "Manual Calculation Log")
+                save_history_func(st.session_state.username, final_cgpa, final_cgpa, running_total_cu, running_total_qp, label if label else f"{current_processing_level} Calculation Log")
                 st.success("Calculations synchronized successfully.")
                 st.rerun()
 
@@ -134,7 +176,7 @@ def show(get_history_func, save_history_func, get_user_func):
                 </div>
                 """, unsafe_allow_html=True)
 
-            final_label = label.strip() if label.strip() else "Multi-Semester Evaluation"
+            final_label = label.strip() if label.strip() else f"{current_processing_level} Evaluation"
             
             document_text = f"""==================================================
 COSMAS ACADEMIC WORKSPACE REPORT
@@ -191,8 +233,8 @@ Powered by Cosmas and Team
         
         t_col1, t_col2 = st.columns(2)
         with t_col1:
-            current_cgpa_input = st.number_input("Your Current CGPA", min_value=0.0, max_value=5.0, value=3.0, step=0.01)
-            total_units_passed = st.number_input("Total Credit Units Completed So Far", min_value=1, value=40, step=1)
+            current_cgpa_input = st.number_input("Your Current CGPA", min_value=0.0, max_value=5.0, value=auto_prev_cgpa if auto_prev_cgpa > 0 else 3.0, step=0.01)
+            total_units_passed = st.number_input("Total Credit Units Completed So Far", min_value=1, value=auto_prev_units if auto_prev_units > 0 else 40, step=1)
         with t_col2:
             target_cgpa_goal = st.number_input("Your Target/Goal CGPA", min_value=0.0, max_value=5.0, value=4.5, step=0.01)
             upcoming_units_load = st.number_input("Total Credit Units to Take Next Semester", min_value=1, value=24, step=1)
@@ -211,20 +253,15 @@ Powered by Cosmas and Team
                 st.success(f"You are already way ahead! You need a GPA of less than 0.00 to keep your target balance. Keep cruising!")
             else:
                 st.info(f"Target Acquired! To reach your target CGPA of **{target_cgpa_goal:.2f}** at the end of next semester, you need to hit an average GPA of **{required_semester_gpa:.2f}** across your next {upcoming_units_load} units.")
-                st.markdown("### Suggested Campaign Advice:")
-                st.write("Stay disciplined, make clean study schedules, and let's win together with Cosmas and Team!")
 
     # ACTIVE PERFORMANCE ANALYTICS HISTORY TRACKER
     with analytics_tab:
         st.subheader("📈 Performance Analytics Dashboard")
         st.markdown("Your saved history line records visualized over time.")
         
-        history_records = get_history_func(st.session_state.username)
-        
         if history_records and len(history_records) > 0:
             import pandas as pd
             
-            # Format history list data elements into structured frame rows
             data_points = []
             for idx, item in enumerate(history_records):
                 data_points.append({
@@ -236,7 +273,6 @@ Powered by Cosmas and Team
             
             df = pd.DataFrame(data_points)
             
-            # Display tracking metrics data grid table views
             st.dataframe(df[["Label Pin", "CGPA Tracking Line", "Units Done"]], use_container_width=True)
             st.markdown("### CGPA Progression Timeline Graphic")
             st.line_chart(data=df, x="Label Pin", y="CGPA Tracking Line")
