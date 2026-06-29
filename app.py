@@ -42,6 +42,7 @@ def init_db():
         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    # Safe structure check
     columns = [col[1] for col in cursor.execute("PRAGMA table_info(users);").fetchall()]
     if "fullname" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN fullname TEXT;")
@@ -65,7 +66,19 @@ def db_create_user(username, email, password, fullname, matric_no, department, c
 
 def db_get_user(username):
     cursor.execute("SELECT id, username, email, password, fullname, matric_no, department, current_level FROM users WHERE username=?", (username,))
-    return cursor.fetchone()
+    row = cursor.fetchone()
+    if row:
+        # Returning a robust dictionary instead of an index-unstable tuple
+        return {
+            "id": row[0],
+            "username": row[1],
+            "email": row[2],
+            "fullname": row[4],
+            "matric_no": row[5],
+            "department": row[6],
+            "current_level": row[7]
+        }
+    return None
 
 def db_get_email(email):
     cursor.execute("SELECT * FROM users WHERE email=?", (email,))
@@ -115,7 +128,10 @@ def run_login(username, password):
     user = db_get_user(username)
     if user is None:
         return False
-    return verify_password(password, user[3])
+    # Fetch password directly from database query check
+    cursor.execute("SELECT password FROM users WHERE username=?", (username,))
+    db_pass = cursor.fetchone()[0]
+    return verify_password(password, db_pass)
 
 
 # ----------------------------------------------------------------
