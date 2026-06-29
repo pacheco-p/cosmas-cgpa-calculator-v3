@@ -109,8 +109,8 @@ def show(get_history_func, save_history_func, get_user_func):
                     for c in range(int(num_courses)):
                         col1, col2, col3 = st.columns([2, 1, 1])
                         with col1:
-                            # --- CHANGED PLACEHOLDER TO BE GENERIC ---
-                            code = st.text_input("Course Code", placeholder="e.g. GST111", key=f"code_{lvl}_{sem_idx}_{c}")
+                            # --- CHANGED PLACEHOLDER TO BE COMPLETELY NEUTRAL ---
+                            code = st.text_input("Course Code", placeholder="Enter Course Code", key=f"code_{lvl}_{sem_idx}_{c}")
                         with col2:
                             units = st.number_input("Units", min_value=1, max_value=6, value=3, step=1, key=f"units_{lvl}_{sem_idx}_{c}")
                         with col3:
