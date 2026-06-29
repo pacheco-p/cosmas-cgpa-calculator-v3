@@ -5,113 +5,161 @@ import database
 
 def show():
 
-    st.title("🛠 Admin Panel")
+    st.title("⚙️ Admin Panel")
 
-    st.info("Add courses for each Department, Level and Semester.")
+    st.caption("Manage course lists for different departments.")
 
-    department = st.text_input("Department")
+    st.divider()
 
-    level = st.selectbox(
+    # ==================================
+    # ADD COURSE
+    # ==================================
+
+    st.subheader("➕ Add Course")
+
+    with st.form("add_course"):
+
+        department = st.text_input(
+            "Department"
+        )
+
+        level = st.selectbox(
+            "Level",
+            [
+                "100 Level",
+                "200 Level",
+                "300 Level",
+                "400 Level",
+                "500 Level",
+                "600 Level"
+            ]
+        )
+
+        semester = st.selectbox(
+            "Semester",
+            [
+                "First Semester",
+                "Second Semester"
+            ]
+        )
+
+        course_code = st.text_input(
+            "Course Code"
+        )
+
+        credit_unit = st.number_input(
+            "Credit Unit",
+            min_value=1,
+            max_value=10,
+            value=3
+        )
+
+        submit = st.form_submit_button(
+            "Add Course",
+            use_container_width=True
+        )
+
+        if submit:
+
+            if department.strip() == "" or course_code.strip() == "":
+
+                st.error(
+                    "Department and Course Code are required."
+                )
+
+            else:
+
+                database.add_course(
+                    department.strip(),
+                    level,
+                    semester,
+                    course_code.strip().upper(),
+                    credit_unit
+                )
+
+                st.success(
+                    "Course added successfully."
+                )
+
+                st.rerun()
+
+    st.divider()
+
+    # ==================================
+    # VIEW COURSES
+    # ==================================
+
+    st.subheader("📚 View Courses")
+
+    search_department = st.text_input(
+        "Department",
+        key="search_department"
+    )
+
+    search_level = st.selectbox(
         "Level",
         [
             "100 Level",
             "200 Level",
             "300 Level",
             "400 Level",
-            "500 Level"
-        ]
+            "500 Level",
+            "600 Level"
+        ],
+        key="search_level"
     )
 
-    semester = st.selectbox(
+    search_semester = st.selectbox(
         "Semester",
         [
             "First Semester",
             "Second Semester"
-        ]
+        ],
+        key="search_semester"
     )
 
-    st.divider()
-
-    course_code = st.text_input("Course Code")
-
-    course_title = st.text_input("Course Title")
-
-    credit_unit = st.number_input(
-        "Credit Unit",
-        min_value=1,
-        max_value=6,
-        value=3
-    )
-
-    if st.button(
-        "➕ Add Course",
-        use_container_width=True
-    ):
-
-        database.add_course(
-            department,
-            level,
-            semester,
-            course_code.upper(),
-            course_title,
-            credit_unit
-        )
-
-        st.success("Course added successfully.")
-
-    st.divider()
-
-    st.subheader("Registered Courses")
-
-    if department:
+    if st.button("Load Courses"):
 
         courses = database.get_courses(
-            department,
-            level,
-            semester
+            search_department.strip(),
+            search_level,
+            search_semester
         )
 
-        if courses:
+        if len(courses) == 0:
 
-            df = pd.DataFrame(
-                courses,
-                columns=[
-                    "ID",
-                    "Department",
-                    "Level",
-                    "Semester",
-                    "Course Code",
-                    "Course Title",
-                    "Credit Unit"
-                ]
+            st.warning(
+                "No courses found."
             )
-
-            st.dataframe(
-                df,
-                use_container_width=True,
-                hide_index=True
-            )
-
-            course_id = st.selectbox(
-                "Select Course",
-                df["ID"]
-            )
-
-            if st.button(
-                "🗑 Delete Course",
-                use_container_width=True
-            ):
-
-                database.delete_course(
-                    int(course_id)
-                )
-
-                st.success("Course deleted.")
-
-                st.rerun()
 
         else:
 
-            st.warning(
-                "No course added yet."
+            df = pd.DataFrame(courses)
+
+            st.dataframe(
+                df[
+                    [
+                        "id",
+                        "course_code",
+                        "credit_unit"
+                    ]
+                ],
+                use_container_width=True
             )
+
+            course_ids = df["id"].tolist()
+
+            delete_id = st.selectbox(
+                "Select Course ID to Delete",
+                course_ids
+            )
+
+            if st.button("🗑 Delete Course"):
+
+                database.delete_course(delete_id)
+
+                st.success(
+                    "Course deleted."
+                )
+
+                st.rerun()
