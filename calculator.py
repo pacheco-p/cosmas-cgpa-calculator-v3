@@ -40,7 +40,6 @@ def show(get_history_func, save_history_func, get_user_func):
     
     if history_records:
         for record in history_records:
-            # Check context labels to find out what has already been officially compiled and saved
             label = record[5].lower() if record[5] else ""
             if "100l" in label:
                 saved_levels.add(100)
@@ -59,33 +58,27 @@ def show(get_history_func, save_history_func, get_user_func):
         st.markdown(f"### 🎯 Session Performance Core Workspace")
         st.caption(f"Currently tracking up to your profile state (**{current_level_str}**). Manage entries below.")
 
-        # Total Aggregators across all processed elements
         cumulative_qp = 0.0
         cumulative_cu = 0
         all_calculated_courses_log = []
 
-        # Define the levels that need rendering up to current tracking state
         target_render_levels = [100]
         if profile_level_num >= 200: target_render_levels.append(200)
         if profile_level_num >= 300: target_render_levels.append(300)
         if profile_level_num >= 400: target_render_levels.append(400)
 
-        # Loop through each academic session level dynamically
         for lvl in target_render_levels:
             is_saved_in_db = lvl in saved_levels
             
-            # Context-Aware Header Color Status Processing Engine
             if is_saved_in_db:
-                status_color = "#22c55e"  # Vivid Green (Completely Saved & Verified)
+                status_color = "#22c55e"  
                 status_text = "🟢 Completed & Saved in History"
                 bg_style = "rgba(34, 197, 94, 0.1)"
             else:
-                # We check dynamically down below if inputs have been interacted with
-                status_color = "#ef4444"  # Default Red (Unfilled/Missing Data)
+                status_color = "#ef4444"  
                 status_text = "🔴 Empty / Session Record Unfilled"
                 bg_style = "rgba(239, 68, 68, 0.08)"
 
-            # Inject stylized container block for visual separation
             st.markdown(f"""
             <div style="background-color: {bg_style}; border-left: 5px solid {status_color}; padding: 12px 15px; border-radius: 4px; margin-top: 15px; margin-bottom: 5px;">
                 <span style="font-weight: bold; font-size: 1.1rem; color: white;">{lvl}L Session Container Block</span>
@@ -93,16 +86,14 @@ def show(get_history_func, save_history_func, get_user_func):
             </div>
             """, unsafe_allow_html=True)
 
-            # If it is already verified in DB, we can gracefully give them an option to use stored data directly or recalculate
             if is_saved_in_db:
                 use_stored = st.checkbox(f"Use database saved historical records for {lvl}L calculations", value=True, key=f"db_check_{lvl}")
                 if use_stored:
                     cumulative_qp += history_qp_map[lvl]
                     cumulative_cu += history_cu_map[lvl]
                     st.info(f"Loaded {lvl}L from database: `{history_cu_map[lvl]} Units` | Cumulative GPA Base applied.")
-                    continue # Skip inputs generation for this level block since historical data is running smoothly
+                    continue 
 
-            # Active UI Form Inputs generation for calculations or manual adjustments
             with st.expander(f"Edit/Fill {lvl}L Course Evaluation Registry Matrix", expanded=not is_saved_in_db):
                 num_semesters = st.number_input(f"Semesters to compute for {lvl}L", min_value=1, max_value=2, value=2, step=1, key=f"sem_count_{lvl}")
                 
@@ -118,7 +109,8 @@ def show(get_history_func, save_history_func, get_user_func):
                     for c in range(int(num_courses)):
                         col1, col2, col3 = st.columns([2, 1, 1])
                         with col1:
-                            code = st.text_input("Course Code", placeholder="CHM101" if lvl==100 else "CHM301", key=f"code_{lvl}_{sem_idx}_{c}")
+                            # --- CHANGED PLACEHOLDER TO BE GENERIC ---
+                            code = st.text_input("Course Code", placeholder="e.g. GST111", key=f"code_{lvl}_{sem_idx}_{c}")
                         with col2:
                             units = st.number_input("Units", min_value=1, max_value=6, value=3, step=1, key=f"units_{lvl}_{sem_idx}_{c}")
                         with col3:
@@ -135,16 +127,9 @@ def show(get_history_func, save_history_func, get_user_func):
                             "level": lvl
                         })
 
-                # If user typed records out but hasn't saved yet, visually adjust status to Pale Yellow/Green alert warning
                 if lvl_cu > 0 and not is_saved_in_db:
-                    st.markdown(f"""
-                    <script>
-                        // Visual update warning context indicator dynamically managed inside streamlit execution frames
-                    </script>
-                    """, unsafe_allow_html=True)
                     st.markdown(f"📊 **Current Workspace Tally for {lvl}L:** GPA: `{lvl_qp/lvl_cu:.2f}` | Credit Units: `{lvl_cu}` (Don't forget to save below!)")
                 
-                # Independent individual Session Snapshot Saver
                 if lvl_cu > 0:
                     if st.button(f"Save & Lock {lvl}L Record Line to Database", key=f"save_btn_{lvl}", use_container_width=True):
                         st.balloons()
@@ -159,13 +144,11 @@ def show(get_history_func, save_history_func, get_user_func):
                         st.success(f"{lvl}L metrics saved to database successfully! Reloading status engine...")
                         st.rerun()
 
-                # Add loop totals to overall engine cumulative pools
                 cumulative_qp += lvl_qp
                 cumulative_cu += lvl_cu
 
         st.divider()
 
-        # OVERALL ENGINE DISPLAY SUMMATIONS
         if cumulative_cu > 0:
             final_cgpa = cumulative_qp / cumulative_cu
             
@@ -175,7 +158,6 @@ def show(get_history_func, save_history_func, get_user_func):
             c2.metric("Total Quality Points (QP)", cumulative_qp)
             c3.metric("Overall Calculated CGPA", f"{final_cgpa:.2f}")
 
-            # BRANDED DOCUMENT DOWNLOAD COMPONENT
             st.markdown("<br>", unsafe_allow_html=True)
             document_text = f"""==================================================
 COSMAS ACADEMIC WORKSPACE REPORT
