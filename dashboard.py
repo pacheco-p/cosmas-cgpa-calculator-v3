@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 
 def show(get_statistics_func, get_user_func):
-    # 1. COSMAS BANNER HEADLINER
     try:
         st.image("assets/cosmas_banner.png", use_container_width=True)
     except:
@@ -21,7 +20,6 @@ def show(get_statistics_func, get_user_func):
         department = user['department']
         current_level = user['current_level']
         
-        # Dynamic Welcome Header
         if "returning_user" not in st.session_state:
             st.markdown(f"<h2 style='font-family: sans-serif; color: #ffffff; margin-bottom: 5px;'>Welcome, {fullname} 🎓</h2>", unsafe_allow_html=True)
             st.session_state.returning_user = True
@@ -30,14 +28,10 @@ def show(get_statistics_func, get_user_func):
             
         st.markdown("<p style='color: #94a3b8; margin-top: 0; margin-bottom: 25px;'>Academic dashboard overview performance hub.</p>", unsafe_allow_html=True)
         
-        # Fetch statistics and history records
         stats = get_statistics_func(st.session_state.username)
-        
-        # Import local database engine cleanly to read recent logs inside dashboard
         import database as db
         recent_logs = db.get_history(st.session_state.username)
 
-        # 2. SIDE-BY-SIDE METRICS GRID
         col_profile, col_metrics = st.columns([1.1, 1])
         
         with col_profile:
@@ -54,24 +48,19 @@ def show(get_statistics_func, get_user_func):
             """, unsafe_allow_html=True)
             
         with col_metrics:
-            # Check if user has calculated anything yet
             if recent_logs and stats and stats[0] > 0:
                 total_calculations, max_cgpa, avg_cgpa = stats
-                # The most recent entry represents current standing
                 latest_cgpa = recent_logs[0][2] 
                 
-                # 3. ACADEMIC GOAL INTERACTION TRAPPING
                 st.markdown("""
                 <div style="background-color: #1e293b; padding: 20px 22px 5px 22px; border-top-left-radius: 10px; border-top-right-radius: 10px;">
                     <h4 style="margin-top: 0; color: #ffffff; font-family: sans-serif; margin-bottom: 5px;">Performance Summary & Goals</h4>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Render Target Input subtly using an expander inside the metrics container box
                 with st.container():
                     st.markdown("<div style='background-color: #1e293b; padding: 0px 22px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;'>", unsafe_allow_html=True)
                     
-                    # Manage target session state
                     if "target_cgpa" not in st.session_state:
                         st.session_state.target_cgpa = 4.50
                         
@@ -84,10 +73,8 @@ def show(get_statistics_func, get_user_func):
                     )
                     st.session_state.target_cgpa = target_input
                     
-                    # Calculate progress percentage toward goal
                     progress_pct = min(int((latest_cgpa / target_input) * 100), 100) if target_input > 0 else 0
                     
-                    # Visual Metric Elements
                     st.markdown(f"""
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
                             <div style="background-color: #0f172a; padding: 12px; border-radius: 6px; text-align: center;">
@@ -122,21 +109,15 @@ def show(get_statistics_func, get_user_func):
                 </div>
                 """, unsafe_allow_html=True)
 
-        # 4. NEW SECTION: SAVED RESULTS & RECENT CALCULATIONS LOG
         if recent_logs:
             st.markdown("<br><h4 style='font-family: sans-serif; color: #ffffff; margin-bottom: 10px;'>Recent Calculation Log Snapshot</h4>", unsafe_allow_html=True)
-            
-            # Formulate clean dataframe representation of the top 3 items
             df_snapshot = pd.DataFrame(
                 recent_logs[:3], 
                 columns=["ID", "GPA", "CGPA", "Total Units", "Quality Points", "Calculation Label / Semester", "Timestamp"]
             )
-            # Drop structural columns for visual presentation elegance
             df_snapshot = df_snapshot.drop(columns=["ID", "Timestamp"])
-            
             st.dataframe(df_snapshot, use_container_width=True, hide_index=True)
 
-        # 5. BOTTOM WORKSPACE PROGRESS ROADMAP
         st.markdown("<br><h4 style='font-family: sans-serif; color: #ffffff; margin-bottom: 15px;'>Academic Roadmap Tracker</h4>", unsafe_allow_html=True)
         st.markdown(f"""
         <div style="background-color: #0f172a; padding: 20px; border-radius: 10px; border: 1px solid #1e293b;">
