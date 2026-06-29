@@ -2,37 +2,27 @@ import streamlit as st
 import pandas as pd
 
 def show(get_history_func, delete_history_func):
-    st.title("Calculation History")
-    
+    st.title("Historical Record Timelines")
     history_data = get_history_func(st.session_state.username)
     
     if history_data:
         df = pd.DataFrame(
             history_data, 
-            columns=["Record ID", "GPA", "CGPA", "Total Units", "Quality Points", "Academic Term", "Date Saved"]
+            columns=["Record ID", "GPA", "CGPA", "Total Units", "Quality Points", "Academic Term Log", "Timestamp Saved"]
         )
         
-        st.subheader("Saved Academic Standings")
-        st.dataframe(
-            df.drop(columns=["Record ID"]), 
-            use_container_width=True,
-            hide_index=True
-        )
+        st.subheader("Logged Calculations Matrix Table")
+        st.dataframe(df.drop(columns=["Record ID"]), use_container_width=True, hide_index=True)
         
         st.divider()
-        
-        st.subheader("Manage Logs")
-        with st.expander("Delete an Academic Record"):
-            record_options = {
-                f"{row[5]} (Saved on {row[6]})": row[0] for row in history_data
-            }
+        st.subheader("Manage System Ledger Cleanups")
+        with st.expander("Remove Academic Standings Entry"):
+            options_map = {f"{r[5]} (Logged {r[6]})": r[0] for r in history_data}
+            selected_key = st.selectbox("Select calculation matrix line to purge:", list(options_map.keys()))
             
-            selected_label = st.selectbox("Select record to clear:", list(record_options.keys()))
-            
-            if st.button("Delete Permanently", type="primary"):
-                record_id_to_delete = record_options[selected_label]
-                delete_history_func(record_id_to_delete)
-                st.success("Record cleared successfully.")
+            if st.button("Purge Entry Data Block", type="primary"):
+                delete_history_func(options_map[selected_key])
+                st.success("Target records removed from dashboard processing logs.")
                 st.rerun()
     else:
-        st.info("Your calculation logs are completely empty. Save a profile from the CGPA Calculator tab to build your timeline.")
+        st.info("No timeline metrics logged on this profile yet.")
