@@ -4,20 +4,22 @@ import dashboard
 import calculator
 import history
 import profile
+import admin
 
-# ==========================
+# =====================================
 # PAGE CONFIG
-# ==========================
+# =====================================
 
 st.set_page_config(
-    page_title="Cosmas CGPA Calculator",
+    page_title="EKSU Student CGPA Calculator",
     page_icon="🎓",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# ==========================
+# =====================================
 # SESSION STATE
-# ==========================
+# =====================================
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -25,139 +27,174 @@ if "logged_in" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = ""
 
-# ==========================
-# LOGIN / SIGNUP
-# ==========================
+# =====================================
+# LOGIN / REGISTER
+# =====================================
 
 if not st.session_state.logged_in:
 
-    st.title("🎓 Cosmas CGPA Calculator")
-    st.caption("Calculate your GPA & CGPA easily")
+    left, center, right = st.columns([1, 2, 1])
 
-    login_tab, signup_tab = st.tabs(
-        ["🔑 Login", "📝 Sign Up"]
-    )
+    with center:
 
-    # ---------------- LOGIN ----------------
+        st.markdown(
+            """
+            # 🎓 EKSU Student CGPA Calculator
 
-    with login_tab:
-
-        username = st.text_input(
-            "Username",
-            key="login_username"
+            ### An Independent GPA & CGPA Calculator for EKSU Students
+            """
         )
 
-        password = st.text_input(
-            "Password",
-            type="password",
-            key="login_password"
+        st.info(
+            "Developed by COSMAS and His Team"
         )
 
-        if st.button(
-            "Login",
-            use_container_width=True
-        ):
-
-            if auth.login(username, password):
-
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.rerun()
-
-            else:
-
-                st.error(
-                    "Invalid username or password."
-                )
-
-    # ---------------- SIGN UP ----------------
-
-    with signup_tab:
-
-        new_username = st.text_input(
-            "Username",
-            key="signup_username"
+        login_tab, register_tab = st.tabs(
+            [
+                "🔐 Login",
+                "📝 Create Account"
+            ]
         )
 
-        email = st.text_input(
-            "Email",
-            key="signup_email"
-        )
+        # ---------------- LOGIN ----------------
 
-        new_password = st.text_input(
-            "Password",
-            type="password",
-            key="signup_password"
-        )
+        with login_tab:
 
-        confirm = st.text_input(
-            "Confirm Password",
-            type="password",
-            key="signup_confirm"
-        )
+            username = st.text_input(
+                "Username"
+            )
 
-        if st.button(
-            "Create Account",
-            use_container_width=True
-        ):
+            password = st.text_input(
+                "Password",
+                type="password"
+            )
 
-            if new_password != confirm:
+            if st.button(
+                "Login",
+                use_container_width=True
+            ):
 
-                st.error("Passwords do not match.")
+                if auth.login(username, password):
 
-            else:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
 
-                success, message = auth.register(
-                    new_username,
-                    email,
-                    new_password
-                )
+                    st.success("Login Successful")
 
-                if success:
-                    st.success(message)
+                    st.rerun()
+
                 else:
-                    st.error(message)
 
-# ==========================
+                    st.error(
+                        "Invalid Username or Password."
+                    )
+
+        # ---------------- REGISTER ----------------
+
+        with register_tab:
+
+            new_username = st.text_input(
+                "Username",
+                key="reg_user"
+            )
+
+            email = st.text_input(
+                "Email",
+                key="reg_email"
+            )
+
+            new_password = st.text_input(
+                "Password",
+                type="password",
+                key="reg_pass"
+            )
+
+            confirm = st.text_input(
+                "Confirm Password",
+                type="password",
+                key="reg_confirm"
+            )
+
+            if st.button(
+                "Create Account",
+                use_container_width=True
+            ):
+
+                if new_password != confirm:
+
+                    st.error(
+                        "Passwords do not match."
+                    )
+
+                else:
+
+                    success, message = auth.register(
+                        new_username,
+                        email,
+                        new_password
+                    )
+
+                    if success:
+
+                        st.success(message)
+
+                    else:
+
+                        st.error(message)
+
+        st.divider()
+
+        st.caption(
+            "This application is an independent student project and is not affiliated with or endorsed by Ekiti State University."
+        )
+
+# =====================================
 # MAIN APP
-# ==========================
+# =====================================
 
 else:
 
-    st.sidebar.title("🎓 Cosmas CGPA")
+    st.sidebar.title("🎓 EKSU CGPA")
 
     st.sidebar.success(
-        f"Welcome {st.session_state.username}"
+        f"Welcome, {st.session_state.username}"
     )
 
     page = st.sidebar.radio(
         "Navigation",
         [
-            "🏠 Dashboard",
-            "🎓 Calculator",
-            "📊 History",
-            "👤 Profile"
+            "Dashboard",
+            "Calculator",
+            "History",
+            "Profile",
+            "Admin"
         ]
     )
 
     st.sidebar.divider()
 
-    if st.sidebar.button(
-        "🚪 Logout",
-        use_container_width=True
-    ):
+    if st.sidebar.button("🚪 Logout"):
+
         st.session_state.logged_in = False
         st.session_state.username = ""
+
         st.rerun()
 
-    if page == "🏠 Dashboard":
+    # =============================
+    # PAGES
+    # =============================
+
+    if page == "Dashboard":
         dashboard.show()
 
-    elif page == "🎓 Calculator":
+    elif page == "Calculator":
         calculator.show()
 
-    elif page == "📊 History":
+    elif page == "History":
         history.show()
 
-    elif page == "👤 Profile":
+    elif page == "Profile":
         profile.show()
+
+    elif page == "Admin":
+        admin.show()
