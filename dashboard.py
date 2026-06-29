@@ -1,86 +1,46 @@
 import streamlit as st
-import pandas as pd
 import database
 
-
 def show():
-
     st.title("🏠 Dashboard")
-
-    st.write(f"### Welcome, {st.session_state.username} 👋")
 
     user = database.get_user(st.session_state.username)
 
-    if user:
+    if not user:
+        st.error("User not found.")
+        return
 
-        col1, col2 = st.columns(2)
+    st.subheader(f"Welcome, {user['full_name'] or user['username']} 👋")
 
-        with col1:
-            st.info(f"**Full Name:** {user['full_name'] or 'Not Set'}")
-            st.info(f"**Matric No:** {user['matric_number'] or 'Not Set'}")
-            st.info(f"**Department:** {user['department'] or 'Not Set'}")
-
-        with col2:
-            st.info(f"**Faculty:** {user['faculty'] or 'Not Set'}")
-            st.info(f"**Level:** {user['level'] or 'Not Set'}")
-            st.info(f"**Admission Year:** {user['admission_year'] or 'Not Set'}")
-
-    st.divider()
+    c1, c2 = st.columns(2)
+    c1.metric("Department", user["department"] or "-")
+    c2.metric("Current Level", user["current_level"] or "-")
 
     results = database.get_results(st.session_state.username)
 
-    if not results:
+    if results:
+        latest = results[0]
 
-        st.warning("No CGPA records found.")
+        st.divider()
 
-        return
+        a, b, c = st.columns(3)
 
-    df = pd.DataFrame(results)
+        a.metric("Current CGPA", f"{latest['cgpa']:.2f}")
+        b.metric("Latest GPA", f"{latest['gpa']:.2f}")
+        c.metric("Semesters Saved", len(results))
 
-    latest = df.iloc[0]
+        cgpa = latest["cgpa"]
 
-    col1, col2, col3 = st.columns(3)
+        if cgpa >= 4.50:
+            st.success("🏆 First Class")
+        elif cgpa >= 3.50:
+            st.info("🥇 Second Class Upper")
+        elif cgpa >= 2.40:
+            st.info("🥈 Second Class Lower")
+        elif cgpa >= 1.50:
+            st.warning("🎓 Third Class")
+        else:
+            st.error("⚠️ Pass")
 
-    with col1:
-        st.metric(
-            "Latest GPA",
-            f"{latest['gpa']:.2f}"
-        )
-
-    with col2:
-        st.metric(
-            "Latest CGPA",
-            f"{latest['cgpa']:.2f}"
-        )
-
-    with col3:
-        st.metric(
-            "Saved Results",
-            len(df)
-        )
-
-    st.divider()
-
-    st.subheader("Recent Results")
-
-    st.dataframe(
-        df[
-            [
-                "session",
-                "semester",
-                "gpa",
-                "cgpa",
-                "created_at"
-            ]
-        ],
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.divider()
-
-    st.subheader("CGPA Progress")
-
-    chart = df.iloc[::-1].set_index("created_at")["cgpa"]
-
-    st.line_chart(chart)
+    else:
+        st.info("No calculation history yet.")
