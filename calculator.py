@@ -26,7 +26,6 @@ def show(get_history_func, save_history_func, get_user_func):
         st.session_state.course_queue = []
     if "last_added_success" not in st.session_state:
         st.session_state.last_added_success = None
-    # Session state to handle the dynamic text clearing mechanism
     if "course_code_value" not in st.session_state:
         st.session_state.course_code_value = ""
 
@@ -75,7 +74,6 @@ def show(get_history_func, save_history_func, get_user_func):
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
         
-        # Using a distinct form key and setting value dynamically from state
         course_code = st.text_input(
             "Course Code", 
             value=st.session_state.course_code_value,
@@ -98,14 +96,13 @@ def show(get_history_func, save_history_func, get_user_func):
                 "qp": credit_units * grade_points[grade]
             })
             
-            # 1. Update the green success toast notification message
+            # Update success status text banner
             st.session_state.last_added_success = f"✅ {display_code} added successfully."
             
-            # 2. ERASE KEY: Clear out the state tracker so the input turns up empty on next render
+            # Clear input bar field context
             st.session_state.course_code_value = ""
             st.rerun()
 
-        # Display dynamic confirmation banner block
         if st.session_state.last_added_success:
             st.success(st.session_state.last_added_success)
 
@@ -117,6 +114,10 @@ def show(get_history_func, save_history_func, get_user_func):
         
         total_cumulative_qp = auto_prev_qp + current_qp
         total_cumulative_cu = auto_prev_units + current_cu
+
+        # Fallback tracking variables to prevent UI crashes during deletions
+        current_gpa_calc = 0.0
+        final_cgpa = (auto_prev_qp / auto_prev_units) if auto_prev_units > 0 else 0.0
 
         # --- LIVE GPA DISPLAY STANDINGS ---
         if current_cu > 0:
