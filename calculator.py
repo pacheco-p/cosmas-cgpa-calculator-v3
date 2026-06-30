@@ -26,7 +26,6 @@ def show(get_history_func, save_history_func, get_user_func):
         st.session_state.course_queue = []
     if "last_added_success" not in st.session_state:
         st.session_state.last_added_success = None
-    # Session state to handle the dynamic text clearing mechanism
     if "course_code_value" not in st.session_state:
         st.session_state.course_code_value = ""
 
@@ -75,7 +74,6 @@ def show(get_history_func, save_history_func, get_user_func):
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
         
-        # Using a distinct form key and setting value dynamically from state
         course_code = st.text_input(
             "Course Code", 
             value=st.session_state.course_code_value,
@@ -98,14 +96,10 @@ def show(get_history_func, save_history_func, get_user_func):
                 "qp": credit_units * grade_points[grade]
             })
             
-            # 1. Update the green success toast notification message
             st.session_state.last_added_success = f"✅ {display_code} added successfully."
-            
-            # 2. ERASE KEY: Clear out the state tracker so the input turns up empty on next render
             st.session_state.course_code_value = ""
             st.rerun()
 
-        # Display dynamic confirmation banner block
         if st.session_state.last_added_success:
             st.success(st.session_state.last_added_success)
 
@@ -118,14 +112,30 @@ def show(get_history_func, save_history_func, get_user_func):
         total_cumulative_qp = auto_prev_qp + current_qp
         total_cumulative_cu = auto_prev_units + current_cu
 
-        # --- LIVE GPA DISPLAY STANDINGS ---
+        # --- MATCHING YOUR IMAGE LAYOUT: OVERALL STANDINGS WITH CUSTOM CSS HTML ---
         if current_cu > 0:
             current_gpa_calc = current_qp / current_cu
             final_cgpa = total_cumulative_qp / total_cumulative_cu
             
-            c1, c2 = st.columns(2)
-            c1.metric("Semester GPA", f"{current_gpa_calc:.2f}")
-            c2.metric("Cumulative CGPA", f"{final_cgpa:.2f}")
+            # Custom HTML styling matching screenshot style exactly
+            st.markdown(f"""
+            <div style="margin-top: 15px; margin-bottom: 20px; font-family: sans-serif;">
+                <h3 style="color: white; margin-bottom: 20px;">📊 Your Overall Standings</h3>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; max-width: 90%;">
+                    <div>
+                        <span style="color: #94a3b8; font-size: 13px; display: block;">Total Credit Units Passed</span>
+                        <span style="color: white; font-size: 32px; font-weight: bold;">{total_cumulative_cu} Units</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="color: #94a3b8; font-size: 13px; display: block;">Your Calculated Cumulative CGPA</span>
+                        <span style="color: white; font-size: 32px; font-weight: bold;">{final_cgpa:.2f}</span>
+                    </div>
+                </div>
+                <p style="color: #94a3b8; font-size: 13px; margin-top: 15px;">
+                    Current Semester Specific GPA Profile: <b>{current_gpa_calc:.2f}</b> (across {current_cu} units)
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
             # Class Tier System Display
             if 4.50 <= final_cgpa <= 5.00:
@@ -139,7 +149,7 @@ def show(get_history_func, save_history_func, get_user_func):
             else:
                 st.error("⚠️ Pass / Probation")
         else:
-            st.info(f"Start adding courses taken during your **{current_semester_label}** to see real-time GPA computations.")
+            st.info(f"Start adding courses taken during your {current_semester_label} to see real-time GPA computations.")
 
         st.divider()
 
@@ -173,8 +183,8 @@ def show(get_history_func, save_history_func, get_user_func):
                 
             st.divider()
 
-            # --- SAVE COMPACT PROGRESSION ROW ACTION ---
-            if st.button("💾 Save Result", use_container_width=True):
+            # --- SAVE BUTTON STYLE MATCHING IMAGE 1 ---
+            if st.button("💾 Save Session Performance to History", use_container_width=True):
                 st.balloons()
                 save_history_func(
                     st.session_state.username,
@@ -225,21 +235,3 @@ def show(get_history_func, save_history_func, get_user_func):
             
             st.markdown("---")
             if required_semester_gpa > 5.0:
-                st.error(f"Mathematically impossible this semester! To hit a {target_cgpa_goal:.2f} CGPA, you would need a semester GPA of {required_semester_gpa:.2f}.")
-            elif required_semester_gpa < 0.0:
-                st.success(f"Easy win! You are already ahead of your goal. You'll maintain it even with low scores.")
-            else:
-                st.info(f"Target Acquired! To hit your goal of **{target_cgpa_goal:.2f}**, you need to get an average GPA of **{required_semester_gpa:.2f}** in your courses next semester.")
-
-    # HISTORY ANALYTICS VISUALIZER
-    with analytics_tab:
-        st.subheader("📈 Semester Progress History")
-        if user_history and len(user_history) > 0:
-            data_points = [{"Semester": item[5] if item[5] else f"Record {idx+1}", "CGPA": float(item[2]), "Semester GPA": float(item[1])} for idx, item in enumerate(user_history)]
-            df = pd.DataFrame(data_points)
-            
-            st.line_chart(data=df, x="Semester", y="CGPA")
-            st.markdown("#### Chronological Transcript Ledger")
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.warning("You haven't saved any semester history metrics yet.")
