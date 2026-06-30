@@ -45,20 +45,15 @@ def show(get_history_func, save_history_func, get_user_func):
         current_semester_label = f"Extra Semester (Row {saved_count + 1})"
 
     # --- AUTOMATIC BACKGROUND MATH ACCUMULATION ---
-    # Automatically aggregate all past credit units and quality points from history rows
     auto_prev_units = 0
     auto_prev_qp = 0.0
     
     if saved_count > 0:
-        # If database rows exist, sum up everything up to this point
-        for record in user_history:
-            # record[3] = Cumulative Units snapshot at that time, record[4] = Cumulative QP snapshot
-            # To avoid compounding math mistakes, we extract the total standing from their latest saved record
-            try:
-                auto_prev_units = int(user_history[-1][3])
-                auto_prev_qp = float(user_history[-1][4])
-            except (ValueError, IndexError):
-                pass
+        try:
+            auto_prev_units = int(user_history[-1][3])
+            auto_prev_qp = float(user_history[-1][4])
+        except (ValueError, IndexError):
+            pass
 
     with calc_tab:
         # --- CURRENT CHRONOLOGICAL TARGET ANNOUNCEMENT ---
@@ -74,7 +69,8 @@ def show(get_history_func, save_history_func, get_user_func):
         
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
-        course_code = st.text_input("Course Code", placeholder="e.g., CHM101", key="input_course_code")
+        # CHANGED: Generic placeholder text suitable for all faculties and departments
+        course_code = st.text_input("Course Code", placeholder="e.g., GST111, GNS101, etc.", key="input_course_code")
         
         col_cu, col_gr = st.columns(2)
         with col_cu:
@@ -83,7 +79,8 @@ def show(get_history_func, save_history_func, get_user_func):
             grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F"], key="input_grade")
             
         if st.button("➕ Add Course", key="add_course_to_queue_btn"):
-            display_code = course_code.strip().upper() if course_code.strip() else "COURSE"
+            # CHANGED: Fallback value if field is submitted blank
+            display_code = course_code.strip().upper() if course_code.strip() else "COURSE CODE"
             st.session_state.course_queue.append({
                 "code": display_code,
                 "units": credit_units,
@@ -165,10 +162,10 @@ def show(get_history_func, save_history_func, get_user_func):
                     current_gpa_calc,
                     total_cumulative_cu,
                     total_cumulative_qp,
-                    current_semester_label # Saves as the official semester tag descriptor row
+                    current_semester_label
                 )
                 st.success(f"{current_semester_label} metrics committed to your ledger successfully!")
-                st.session_state.course_queue = [] # Wipes worksheet out completely to accept new term rows
+                st.session_state.course_queue = [] 
                 st.rerun()
 
             # Export options
@@ -216,7 +213,6 @@ def show(get_history_func, save_history_func, get_user_func):
     with analytics_tab:
         st.subheader("📈 Semester Progress History")
         if user_history and len(user_history) > 0:
-            # item[5] is the semester label descriptor column we passed down while saving!
             data_points = [{"Semester": item[5] if item[5] else f"Record {idx+1}", "CGPA": float(item[2]), "Semester GPA": float(item[1])} for idx, item in enumerate(user_history)]
             df = pd.DataFrame(data_points)
             
