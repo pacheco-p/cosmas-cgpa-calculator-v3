@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 
 def show(get_history_func, save_history_func, get_user_func):
-    # CLEAN, FRIENDLY CAMPUS BANNER
     try:
         st.image("assets/cosmas_banner.png", use_container_width=True)
     except:
@@ -21,7 +20,6 @@ def show(get_history_func, save_history_func, get_user_func):
     
     grade_points = {"A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0}
     
-    # Initialize workspace session states
     if "course_queue" not in st.session_state:
         st.session_state.course_queue = []
     if "last_added_success" not in st.session_state:
@@ -29,7 +27,6 @@ def show(get_history_func, save_history_func, get_user_func):
     if "course_code_value" not in st.session_state:
         st.session_state.course_code_value = ""
 
-    # --- CHRONOLOGICAL SEMESTER TIMELINE MAPPING ---
     semester_map = [
         "100L - 1st Semester", "100L - 2nd Semester",
         "200L - 1st Semester", "200L - 2nd Semester",
@@ -38,17 +35,14 @@ def show(get_history_func, save_history_func, get_user_func):
         "500L - 1st Semester", "500L - 2nd Semester"
     ]
     
-    # Fetch user save rows
     user_history = get_history_func(st.session_state.username)
     saved_count = len(user_history) if user_history else 0
     
-    # Determine what semester label to assign this workspace session
     if saved_count < len(semester_map):
         current_semester_label = semester_map[saved_count]
     else:
         current_semester_label = f"Extra Semester (Row {saved_count + 1})"
 
-    # --- AUTOMATIC BACKGROUND MATH ACCUMULATION ---
     auto_prev_units = 0
     auto_prev_qp = 0.0
     
@@ -60,7 +54,6 @@ def show(get_history_func, save_history_func, get_user_func):
             pass
 
     with calc_tab:
-        # --- CURRENT CHRONOLOGICAL TARGET ANNOUNCEMENT ---
         st.subheader("Academic Workspace Profile")
         st.markdown(f"📍 Currently processing calculation for: **⚡ {current_semester_label}**")
         
@@ -71,7 +64,6 @@ def show(get_history_func, save_history_func, get_user_func):
             
         st.divider()
         
-        # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
         
         course_code = st.text_input(
@@ -105,19 +97,16 @@ def show(get_history_func, save_history_func, get_user_func):
 
         st.divider()
 
-        # --- MATH ENGINE CORRELATION ---
         current_qp = sum(item["qp"] for item in st.session_state.course_queue)
         current_cu = sum(item["units"] for item in st.session_state.course_queue)
         
         total_cumulative_qp = auto_prev_qp + current_qp
         total_cumulative_cu = auto_prev_units + current_cu
 
-        # --- MATCHING YOUR IMAGE LAYOUT: OVERALL STANDINGS WITH CUSTOM CSS HTML ---
         if current_cu > 0:
             current_gpa_calc = current_qp / current_cu
             final_cgpa = total_cumulative_qp / total_cumulative_cu
             
-            # Custom HTML styling matching screenshot style exactly
             st.markdown(f"""
             <div style="margin-top: 15px; margin-bottom: 20px; font-family: sans-serif;">
                 <h3 style="color: white; margin-bottom: 20px;">📊 Your Overall Standings</h3>
@@ -137,7 +126,6 @@ def show(get_history_func, save_history_func, get_user_func):
             </div>
             """, unsafe_allow_html=True)
 
-            # Class Tier System Display
             if 4.50 <= final_cgpa <= 5.00:
                 st.success("🏆 First Class")
             elif 3.50 <= final_cgpa < 4.50:
@@ -153,7 +141,6 @@ def show(get_history_func, save_history_func, get_user_func):
 
         st.divider()
 
-        # --- COURSES DATAFRAME LOOP WORKSPACE ---
         st.markdown("### Courses Worksheet")
         if not st.session_state.course_queue:
             st.info("No courses listed in this active term panel yet.")
@@ -168,7 +155,6 @@ def show(get_history_func, save_history_func, get_user_func):
             course_df = pd.DataFrame(df_data)
             st.dataframe(course_df, use_container_width=True)
             
-            # Deletion Line Selection Menu
             st.markdown("**Delete Course**")
             course_options = [item["code"] for item in st.session_state.course_queue]
             selected_to_delete = st.selectbox("Select course line item to wipe out", options=course_options, label_visibility="collapsed")
@@ -183,7 +169,6 @@ def show(get_history_func, save_history_func, get_user_func):
                 
             st.divider()
 
-            # --- SAVE BUTTON STYLE MATCHING IMAGE 1 ---
             if st.button("💾 Save Session Performance to History", use_container_width=True):
                 st.balloons()
                 save_history_func(
@@ -200,7 +185,6 @@ def show(get_history_func, save_history_func, get_user_func):
                 st.session_state.course_code_value = ""
                 st.rerun()
 
-            # Export options
             csv_file = course_df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Download CSV Transcript Snapshot",
@@ -210,7 +194,6 @@ def show(get_history_func, save_history_func, get_user_func):
                 use_container_width=True
             )
 
-    # TARGET ENGINE TIMELINE
     with target_tab:
         st.subheader("🎯 Set Your Graduation Target Goal")
         st.markdown("Find out exactly what GPA you need to hit next semester to reach your target goal.")
@@ -235,3 +218,20 @@ def show(get_history_func, save_history_func, get_user_func):
             
             st.markdown("---")
             if required_semester_gpa > 5.0:
+                st.error(f"Mathematically impossible this semester! To hit a {target_cgpa_goal:.2f} CGPA, you would need a semester GPA of {required_semester_gpa:.2f}.")
+            elif required_semester_gpa < 0.0:
+                st.success(f"Easy win! You are already ahead of your goal. You'll maintain it even with low scores.")
+            else:
+                st.info(f"Target Acquired! To hit your goal of **{target_cgpa_goal:.2f}**, you need to get an average GPA of **{required_semester_gpa:.2f}** in your courses next semester.")
+
+    with analytics_tab:
+        st.subheader("📈 Semester Progress History")
+        if user_history and len(user_history) > 0:
+            data_points = [{"Semester": item[5] if item[5] else f"Record {idx+1}", "CGPA": float(item[2]), "Semester GPA": float(item[1])} for idx, item in enumerate(user_history)]
+            df = pd.DataFrame(data_points)
+            
+            st.line_chart(data=df, x="Semester", y="CGPA")
+            st.markdown("#### Chronological Transcript Ledger")
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.warning("You haven't saved any semester history metrics yet.")
