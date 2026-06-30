@@ -66,7 +66,6 @@ if not st.session_state.authenticated:
                             formatted_fullname = fullname.strip().title()
                             formatted_dept = dept.strip().upper()
                             
-                            # Added timeout handling to clear database concurrency blocks
                             conn = sqlite3.connect("users.db", timeout=20)
                             cursor = conn.cursor()
                             cursor.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?)", 
@@ -84,7 +83,6 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Please fill out all required fields.")
             else:
-                # Login Processing with safe database connection timeout
                 conn = sqlite3.connect("users.db", timeout=20)
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
@@ -97,7 +95,6 @@ if not st.session_state.authenticated:
                 else:
                     st.error("Invalid Username or Password Credentials.")
 else:
-    # NORMAL HORIZONTAL COSMAS BANNER ON SIDEBAR
     try:
         st.sidebar.image("assets/cosmas_banner.png", use_container_width=True)
     except:
@@ -118,7 +115,6 @@ else:
     st.sidebar.title("Navigation")
     menu_selection = st.sidebar.radio("Go to:", ["Dashboard", "CGPA Calculator", "History Log", "My Profile"])
     
-    # Bottom Campaign Footer
     st.sidebar.markdown("<br><hr style='margin: 10px 0; border-color: #334155;'>", unsafe_allow_html=True)
     
     st.sidebar.markdown("""
