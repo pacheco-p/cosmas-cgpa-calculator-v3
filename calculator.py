@@ -27,13 +27,10 @@ def show(get_history_func, save_history_func, get_user_func):
     if "course_code_value" not in st.session_state:
         st.session_state.course_code_value = ""
 
-    # Clear history logic definitions
     level_map = ["100 LEVEL", "200 LEVEL", "300 LEVEL", "400 LEVEL", "500 LEVEL"]
     
     user_history = get_history_func(st.session_state.username)
     
-    # Determine what level and semester we are on based on records
-    # If no history, start at 100L 1st Semester. If 1st semester exists, fill 2nd Semester.
     if not user_history:
         current_level = "100 LEVEL"
         current_semester = "1st Semester"
@@ -41,13 +38,9 @@ def show(get_history_func, save_history_func, get_user_func):
         auto_prev_qp = 0.0
     else:
         latest_record = user_history[-1]
-        # Check if the latest record is just a 1st Semester entry (meaning total units == 1st semester units)
-        # For a level to be complete, both semesters must be compiled. 
-        # We look at the label or check if we need to update or move to next level
         if "1st Semester Only" in str(latest_record[5]):
             current_level = str(latest_record[5]).split(" - ")[0]
             current_semester = "2nd Semester"
-            # Previous units before this level started
             if len(user_history) > 1:
                 auto_prev_units = int(user_history[-2][3])
                 auto_prev_qp = float(user_history[-2][4])
@@ -55,7 +48,6 @@ def show(get_history_func, save_history_func, get_user_func):
                 auto_prev_units = 0
                 auto_prev_qp = 0.0
         else:
-            # Current level is complete, move to next level index
             completed_levels = len(user_history)
             if completed_levels < len(level_map):
                 current_level = level_map[completed_levels]
@@ -77,7 +69,14 @@ def show(get_history_func, save_history_func, get_user_func):
         st.divider()
         
         st.markdown("### Add New Course")
-        course_code = st.text_input("Course Code", value=st.session_state.course_code_value, placeholder="e.g. CHM101", key="input_course_code")
+        
+        # FIXED: Removed 'e.g. CHM101' completely. Clean, raw user text input.
+        course_code = st.text_input(
+            "Course Code", 
+            value=st.session_state.course_code_value, 
+            placeholder="Enter Course Code", 
+            key="input_course_code"
+        )
         
         col_cu, col_gr = st.columns(2)
         with col_cu:
@@ -102,7 +101,6 @@ def show(get_history_func, save_history_func, get_user_func):
 
         st.divider()
 
-        # Calculate current active workspace values
         current_qp = sum(item["qp"] for item in st.session_state.course_queue)
         current_cu = sum(item["units"] for item in st.session_state.course_queue)
 
@@ -110,13 +108,10 @@ def show(get_history_func, save_history_func, get_user_func):
             current_gpa_calc = current_qp / current_cu
             
             if current_semester == "1st Semester":
-                # For 1st semester, GPA and CGPA of this level match if fresh
                 total_cumulative_qp = auto_prev_qp + current_qp
                 total_cumulative_cu = auto_prev_units + current_cu
                 display_cgpa = total_cumulative_qp / total_cumulative_cu
             else:
-                # For 2nd semester, load the 1st semester's saved data to get the true level combo
-                # latest_record holds the 1st semester info
                 first_sem_qp = float(latest_record[4])
                 first_sem_cu = int(latest_record[3])
                 
@@ -154,33 +149,25 @@ def show(get_history_func, save_history_func, get_user_func):
                 st.balloons()
                 
                 if current_semester == "1st Semester":
-                    # Save temporary 1st semester checkpoint row
                     save_label = f"{current_level} - 1st Semester Only"
                     save_history_func(
                         st.session_state.username,
-                        current_gpa_calc,        # GPA column
-                        current_gpa_calc,        # CGPA column temporarily matching
-                        total_cumulative_cu,     # Combined units so far
-                        total_cumulative_qp,     # Combined quality points so far
+                        current_gpa_calc,        
+                        current_gpa_calc,        
+                        total_cumulative_cu,     
+                        total_cumulative_qp,     
                         save_label
                     )
                 else:
-                    # It's 2nd semester! Overwrite or delete the temporary row and save a single unified Level row
-                    # To do this seamlessly with your existing app setups, we save it with a finalized level label
                     final_label = f"{current_level} Finalized"
-                    
-                    # We pass the final combined CGPA to the database
                     save_history_func(
                         st.session_state.username,
-                        current_gpa_calc,        # 2nd Semester GPA
-                        display_cgpa,            # Unified True Cumulative CGPA for the entire level
-                        total_cumulative_cu,     # Complete Level Units
-                        total_cumulative_qp,     # Complete Level Quality Points
+                        current_gpa_calc,        
+                        display_cgpa,            
+                        total_cumulative_cu,     
+                        total_cumulative_qp,     
                         final_label
                     )
-                    
-                    # Optional: If your backend layout allows deletion, you can advise the user to remove the "1st Semester Only" row,
-                    # or the code handles it natively on the History view.
                     
                 st.success(f"{current_level} metadata committed successfully!")
                 st.session_state.course_queue = []
