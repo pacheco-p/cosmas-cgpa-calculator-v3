@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 def show(get_history_func, save_history_func, get_user_func):
     # CLEAN, FRIENDLY CAMPUS BANNER
@@ -24,42 +25,48 @@ def show(get_history_func, save_history_func, get_user_func):
     if "course_queue" not in st.session_state:
         st.session_state.course_queue = []
 
+    level_map = ["100 LEVEL", "200 LEVEL", "300 LEVEL", "400 LEVEL", "500 LEVEL"]
+
     # --- AUTOMATIC BACKGROUND HISTORY LOADING ---
-    # Fetch all previous records saved by this user
     user_history = get_history_func(st.session_state.username)
     
     auto_prev_units = 0
     auto_prev_qp = 0.0
 
-    # If they have a history, find their most recent snapshot to pre-populate defaults
-    if user_history and len(user_history) > 0:
-        # Assuming the last saved entry contains their latest cumulative metrics
+    # Determine automated level and semester staging
+    if not user_history:
+        current_level = "100 LEVEL"
+        current_semester = "1st Semester"
+    else:
         latest_record = user_history[-1]
-        
-        # Depending on your DB schema index structure:
-        # record[3] = Total Cumulative Units, record[4] = Total Cumulative QP
-        try:
+        # Check if the last record was only a first semester checkpoint
+        if "1st Semester Only" in str(latest_record[5]):
+            current_level = str(latest_record[5]).split(" - ")[0]
+            current_semester = "2nd Semester"
+            # Carry over background stats from preceding completed levels if any exist
+            if len(user_history) > 1:
+                auto_prev_units = int(user_history[-2][3])
+                auto_prev_qp = float(user_history[-2][4])
+        else:
+            # Previous level is fully finalized; move up
+            completed_levels = len(user_history)
+            if completed_levels < len(level_map):
+                current_level = level_map[completed_levels]
+            else:
+                current_level = f"Extra Level {completed_levels + 1}"
+            current_semester = "1st Semester"
             auto_prev_units = int(latest_record[3])
             auto_prev_qp = float(latest_record[4])
-        except (ValueError, IndexError):
-            pass
 
     with calc_tab:
         # --- PREVIOUS ACADEMIC RECORD SECTION ---
-        st.subheader("Previous Academic Record")
+        st.subheader("Academic Workspace Profile")
+        st.markdown(f"📍 Current Session Panel: **⚡ {current_level} ({current_semester})**")
         
         if auto_prev_units > 0:
-            st.caption(f"🔄 **Automatically loaded your latest saved history record ({auto_prev_units} Units background data).**")
+            st.caption(f"ℹ️ *Background Engine loaded previous running totals: {auto_prev_units} Units / {auto_prev_qp} QP.*")
         else:
-            st.caption("No previous records found in history. Enter your past metrics below if you are in 200L or above.")
-
-        col_prev_cu, col_prev_qp = st.columns(2)
-        with col_prev_cu:
-            # Value now dynamically defaults to their history instead of flat 0!
-            prev_units = st.number_input("Previous Credit Units", min_value=0, value=auto_prev_units, step=1, key="prev_units_input")
-        with col_prev_qp:
-            # Value now dynamically defaults to their history instead of flat 0.0!
-            prev_qp = st.number_input("Previous Quality Points", min_value=0.0, value=auto_prev_qp, step=1.0, key="prev_qp_input")
+            st.caption("ℹ️ *Starting fresh from 100 Level 1st Semester entry.*")
             
         st.divider()
         
@@ -89,7 +96,7 @@ def show(get_history_func, save_history_func, get_user_func):
 
         # --- DISPLAY ADDED COURSES QUEUE PANEL ---
         if not st.session_state.course_queue:
-            st.info("No courses added yet.")
+            st.info(f"No courses listed in this active term panel yet.")
         else:
             st.markdown("#### Current Entries Summary")
             
@@ -108,40 +115,63 @@ def show(get_history_func, save_history_func, get_user_func):
 
         st.divider()
 
-        # --- MATH ENGINE ---
+        # --- AUTOMATED MATHEMATICS MATRIX ENGINE ---
         current_qp = sum(item["qp"] for item in st.session_state.course_queue)
         current_cu = sum(item["units"] for item in st.session_state.course_queue)
-        
-        total_cumulative_qp = prev_qp + current_qp
-        total_cumulative_cu = prev_units + current_cu
 
-        if total_cumulative_cu > 0:
-            final_cgpa = total_cumulative_qp / total_cumulative_cu
+        if current_cu > 0:
+            current_gpa_calc = current_qp / current_cu
             
-            st.markdown("### 📊 Your Overall Standings")
-            c1, c2 = st.columns(2)
-            c1.metric("Total Credit Units Passed", f"{total_cumulative_cu} Units")
-            c2.metric("Your Calculated Cumulative CGPA", f"{final_cgpa:.2f}")
-
-            if current_cu > 0:
-                current_gpa_calc = current_qp / current_cu
-                st.caption(f"Current Semester Specific GPA Profile: **{current_gpa_calc:.2f}** (across {current_cu} units)")
+            if current_semester == "1st Semester":
+                total_cumulative_qp = auto_prev_qp + current_qp
+                total_cumulative_cu = auto_prev_units + current_cu
+                display_cgpa = total_cumulative_qp / total_cumulative_cu
+            else:
+                # 2nd Semester looks back at the temporary 1st semester record metrics
+                first_sem_qp = float(latest_record[4])
+                first_sem_cu = int(latest_record[3])
                 
-                if st.button("💾 Save Session Performance to History", use_container_width=True):
-                    st.balloons()
+                total_cumulative_qp = first_sem_qp + current_qp
+                total_cumulative_cu = first_sem_cu + current_cu
+                display_cgpa = total_cumulative_qp / total_cumulative_cu
+            
+            st.markdown("### 📊 Semester Computations")
+            c1, c2 = st.columns(2)
+            c1.metric("Semester Credit Units", f"{current_cu} Units")
+            c2.metric("Calculated Semester GPA", f"{current_gpa_calc:.2f}")
+            
+            if current_semester == "2nd Semester":
+                st.markdown(f"⚡ **Combined Running Level CGPA:** `{display_cgpa:.2f}` (Total: {total_cumulative_cu} Units Completed)")
+
+            if st.button("💾 Save Performance to History Log", use_container_width=True):
+                st.balloons()
+                
+                if current_semester == "1st Semester":
+                    save_label = f"{current_level} - 1st Semester Only"
                     save_history_func(
                         st.session_state.username,
-                        final_cgpa,
-                        current_gpa_calc,
-                        total_cumulative_cu,
-                        total_cumulative_qp,
-                        f"Compiled Record ({total_cumulative_cu} CU)"
+                        current_gpa_calc,        # Single Semester GPA column
+                        current_gpa_calc,        # CGPA slot tracking running value
+                        total_cumulative_cu,     
+                        total_cumulative_qp,     
+                        save_label
                     )
-                    st.success("Standings committed to tracker ledger database successfully!")
-                    st.session_state.course_queue = [] # Clear queue after saving
-                    st.rerun()
+                else:
+                    final_label = f"{current_level} Finalized"
+                    save_history_func(
+                        st.session_state.username,
+                        current_gpa_calc,        # 2nd Semester GPA
+                        display_cgpa,            # The structural level CGPA blend
+                        total_cumulative_cu,     
+                        total_cumulative_qp,     
+                        final_label
+                    )
+                    
+                st.success(f"{current_level} metrics committed successfully!")
+                st.session_state.course_queue = [] 
+                st.rerun()
         else:
-            st.info("Enter your cumulative parameters above or add running semester lines to generate stats visualization results.")
+            st.info(f"Add courses taken during your {current_level} {current_semester} to generate calculations.")
 
     # TARGET ENGINE TIMELINE
     with target_tab:
@@ -150,7 +180,6 @@ def show(get_history_func, save_history_func, get_user_func):
         
         t_col1, t_col2 = st.columns(2)
         with t_col1:
-            # We can also pre-fill the target tab using their loaded history values!
             default_target_cgpa = (auto_prev_qp / auto_prev_units) if auto_prev_units > 0 else 3.5
             default_target_units = auto_prev_units if auto_prev_units > 0 else 60
 
@@ -179,8 +208,7 @@ def show(get_history_func, save_history_func, get_user_func):
     with analytics_tab:
         st.subheader("📈 Your Progress Chart")
         if user_history and len(user_history) > 0:
-            import pandas as pd
-            data_points = [{"Entry Point": item[5] if item[5] else f"Saved Record {idx+1}", "CGPA": float(item[2])} for idx, item in enumerate(user_history)]
+            data_points = [{"Entry Point": item[5] if item[5] else f"Saved Record {idx+1}", "Semester GPA": float(item[1]), "CGPA": float(item[2])} for idx, item in enumerate(user_history)]
             df = pd.DataFrame(data_points)
             st.line_chart(data=df, x="Entry Point", y="CGPA")
             st.dataframe(df, use_container_width=True)
