@@ -25,54 +25,40 @@ def show(get_history_func, save_history_func, get_user_func):
     if "course_queue" not in st.session_state:
         st.session_state.course_queue = []
 
-    level_map = ["100 LEVEL", "200 LEVEL", "300 LEVEL", "400 LEVEL", "500 LEVEL"]
-
     # --- AUTOMATIC BACKGROUND HISTORY LOADING ---
     user_history = get_history_func(st.session_state.username)
-    
     auto_prev_units = 0
     auto_prev_qp = 0.0
 
-    # Determine automated level and semester staging
-    if not user_history:
-        current_level = "100 LEVEL"
-        current_semester = "1st Semester"
-    else:
+    if user_history and len(user_history) > 0:
         latest_record = user_history[-1]
-        # Check if the last record was only a first semester checkpoint
-        if "1st Semester Only" in str(latest_record[5]):
-            current_level = str(latest_record[5]).split(" - ")[0]
-            current_semester = "2nd Semester"
-            # Carry over background stats from preceding completed levels if any exist
-            if len(user_history) > 1:
-                auto_prev_units = int(user_history[-2][3])
-                auto_prev_qp = float(user_history[-2][4])
-        else:
-            # Previous level is fully finalized; move up
-            completed_levels = len(user_history)
-            if completed_levels < len(level_map):
-                current_level = level_map[completed_levels]
-            else:
-                current_level = f"Extra Level {completed_levels + 1}"
-            current_semester = "1st Semester"
+        try:
             auto_prev_units = int(latest_record[3])
             auto_prev_qp = float(latest_record[4])
+        except (ValueError, IndexError):
+            pass
 
     with calc_tab:
         # --- PREVIOUS ACADEMIC RECORD SECTION ---
-        st.subheader("Academic Workspace Profile")
-        st.markdown(f"📍 Current Session Panel: **⚡ {current_level} ({current_semester})**")
+        st.subheader("Previous Academic Record")
         
         if auto_prev_units > 0:
-            st.caption(f"ℹ️ *Background Engine loaded previous running totals: {auto_prev_units} Units / {auto_prev_qp} QP.*")
+            st.caption(f"🔄 **Automatically loaded your latest saved history record ({auto_prev_units} Units background data).**")
         else:
-            st.caption("ℹ️ *Starting fresh from 100 Level 1st Semester entry.*")
+            st.caption("No previous records found in history. Enter your past metrics below if you are in 200L or above.")
+
+        col_prev_cu, col_prev_qp = st.columns(2)
+        with col_prev_cu:
+            prev_units = st.number_input("Previous Credit Units", min_value=0, value=auto_prev_units, step=1, key="prev_units_input")
+        with col_prev_qp:
+            prev_qp = st.number_input("Previous Quality Points", min_value=0.0, value=auto_prev_qp, step=1.0, key="prev_qp_input")
             
         st.divider()
         
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
         
+        # FIXED: Raw input container with no hardcoded pre-filled default string.
         course_code = st.text_input("Course Code", placeholder="Enter Course Code", key="input_course_code")
         
         col_cu, col_gr = st.columns(2)
@@ -81,7 +67,7 @@ def show(get_history_func, save_history_func, get_user_func):
         with col_gr:
             grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F"], key="input_grade")
             
-        # Add Course Button Logic
+        # Add Course Action
         if st.button("➕ Add Course", key="add_course_to_queue_btn"):
             display_code = course_code.strip().upper() if course_code.strip() else "COURSE"
             st.session_state.course_queue.append({
@@ -90,88 +76,98 @@ def show(get_history_func, save_history_func, get_user_func):
                 "grade": grade,
                 "qp": credit_units * grade_points[grade]
             })
+            st.success(f"{display_code} added successfully!")
             st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # --- DISPLAY ADDED COURSES QUEUE PANEL ---
-        if not st.session_state.course_queue:
-            st.info(f"No courses listed in this active term panel yet.")
-        else:
-            st.markdown("#### Current Entries Summary")
-            
-            for idx, item in enumerate(st.session_state.course_queue):
-                q_col1, q_col2, q_col3, q_col4 = st.columns([2, 1, 1, 1])
-                q_col1.markdown(f"**{item['code']}**")
-                q_col2.write(f"{item['units']} Units")
-                q_col3.write(f"Grade: {item['grade']}")
-                if q_col4.button("🗑️ Remove", key=f"remove_{idx}"):
-                    st.session_state.course_queue.pop(idx)
-                    st.rerun()
-            
-            if st.button("❌ Clear All Courses", key="clear_all_queue"):
-                st.session_state.course_queue = []
-                st.rerun()
 
         st.divider()
 
-        # --- AUTOMATED MATHEMATICS MATRIX ENGINE ---
+        # --- MATH ENGINE ---
         current_qp = sum(item["qp"] for item in st.session_state.course_queue)
         current_cu = sum(item["units"] for item in st.session_state.course_queue)
+        
+        total_cumulative_qp = prev_qp + current_qp
+        total_cumulative_cu = prev_units + current_cu
 
-        if current_cu > 0:
-            current_gpa_calc = current_qp / current_cu
+        # --- DYNAMIC KPIS & METRIC DISPLAY ---
+        if total_cumulative_cu > 0:
+            final_cgpa = total_cumulative_qp / total_cumulative_cu
+            current_gpa_calc = (current_qp / current_cu) if current_cu > 0 else 0.0
             
-            if current_semester == "1st Semester":
-                total_cumulative_qp = auto_prev_qp + current_qp
-                total_cumulative_cu = auto_prev_units + current_cu
-                display_cgpa = total_cumulative_qp / total_cumulative_cu
-            else:
-                # 2nd Semester looks back at the temporary 1st semester record metrics
-                first_sem_qp = float(latest_record[4])
-                first_sem_cu = int(latest_record[3])
-                
-                total_cumulative_qp = first_sem_qp + current_qp
-                total_cumulative_cu = first_sem_cu + current_cu
-                display_cgpa = total_cumulative_qp / total_cumulative_cu
-            
-            st.markdown("### 📊 Semester Computations")
             c1, c2 = st.columns(2)
-            c1.metric("Semester Credit Units", f"{current_cu} Units")
-            c2.metric("Calculated Semester GPA", f"{current_gpa_calc:.2f}")
-            
-            if current_semester == "2nd Semester":
-                st.markdown(f"⚡ **Combined Running Level CGPA:** `{display_cgpa:.2f}` (Total: {total_cumulative_cu} Units Completed)")
+            c1.metric("Semester GPA", f"{current_gpa_calc:.2f}")
+            c2.metric("Cumulative CGPA", f"{final_cgpa:.2f}")
 
-            if st.button("💾 Save Performance to History Log", use_container_width=True):
-                st.balloons()
-                
-                if current_semester == "1st Semester":
-                    save_label = f"{current_level} - 1st Semester Only"
-                    save_history_func(
-                        st.session_state.username,
-                        current_gpa_calc,        # Single Semester GPA column
-                        current_gpa_calc,        # CGPA slot tracking running value
-                        total_cumulative_cu,     
-                        total_cumulative_qp,     
-                        save_label
-                    )
-                else:
-                    final_label = f"{current_level} Finalized"
-                    save_history_func(
-                        st.session_state.username,
-                        current_gpa_calc,        # 2nd Semester GPA
-                        display_cgpa,            # The structural level CGPA blend
-                        total_cumulative_cu,     
-                        total_cumulative_qp,     
-                        final_label
-                    )
-                    
-                st.success(f"{current_level} metrics committed successfully!")
-                st.session_state.course_queue = [] 
-                st.rerun()
+            # Class Tier System Logic Banner
+            if 4.50 <= final_cgpa <= 5.00:
+                st.success("🏆 First Class")
+            elif 3.50 <= final_cgpa < 4.50:
+                st.success("🥈 Second Class Upper")
+            elif 2.40 <= final_cgpa < 3.50:
+                st.warning("🥉 Second Class Lower")
+            elif 1.50 <= final_cgpa < 2.40:
+                st.error("📋 Third Class")
+            else:
+                st.error("⚠️ Pass / Technical Probation")
         else:
-            st.info(f"Add courses taken during your {current_level} {current_semester} to generate calculations.")
+            st.info("Add running semester lines to generate standings visualization results.")
+
+        st.divider()
+
+        # --- COURSES DATAFRAME & SINGLE DELETION ENGINE ---
+        st.markdown("### Courses")
+        if not st.session_state.course_queue:
+            st.info("No courses currently in the worksheet loop.")
+        else:
+            # Build clean structured dataframe
+            df_data = [{
+                "Course": item["code"],
+                "Credit Units": item["units"],
+                "Grade": item["grade"],
+                "Quality Points": item["qp"]
+            } for item in st.session_state.course_queue]
+            
+            course_df = pd.DataFrame(df_data)
+            st.dataframe(course_df, use_container_width=True)
+            
+            # Delete Course Dropdown Management Row
+            st.markdown("**Delete Course**")
+            course_options = [item["code"] for item in st.session_state.course_queue]
+            selected_to_delete = st.selectbox("Select target course line item to remove", options=course_options, label_visibility="collapsed")
+            
+            if st.button("Delete", key="execute_deletion_btn"):
+                for idx, item in enumerate(st.session_state.course_queue):
+                    if item["code"] == selected_to_delete:
+                        st.session_state.course_queue.pop(idx)
+                        break
+                st.rerun()
+                
+            st.divider()
+
+            # --- SAVE & EXPORT BACKEND ACTIONS ---
+            if st.button("💾 Save Result", use_container_width=True):
+                if total_cumulative_cu > 0:
+                    st.balloons()
+                    save_history_func(
+                        st.session_state.username,
+                        final_cgpa,
+                        current_gpa_calc,
+                        total_cumulative_cu,
+                        total_cumulative_qp,
+                        f"Compiled Record ({total_cumulative_cu} CU)"
+                    )
+                    st.success("Standings committed to tracker ledger database successfully!")
+                    st.session_state.course_queue = [] 
+                    st.rerun()
+
+            # Generate dynamic downloadable CSV payload file byte stream
+            csv_file = course_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv_file,
+                file_name=f"academic_transcript_snapshot.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
     # TARGET ENGINE TIMELINE
     with target_tab:
@@ -208,7 +204,7 @@ def show(get_history_func, save_history_func, get_user_func):
     with analytics_tab:
         st.subheader("📈 Your Progress Chart")
         if user_history and len(user_history) > 0:
-            data_points = [{"Entry Point": item[5] if item[5] else f"Saved Record {idx+1}", "Semester GPA": float(item[1]), "CGPA": float(item[2])} for idx, item in enumerate(user_history)]
+            data_points = [{"Entry Point": item[5] if item[5] else f"Saved Record {idx+1}", "CGPA": float(item[2])} for idx, item in enumerate(user_history)]
             df = pd.DataFrame(data_points)
             st.line_chart(data=df, x="Entry Point", y="CGPA")
             st.dataframe(df, use_container_width=True)
