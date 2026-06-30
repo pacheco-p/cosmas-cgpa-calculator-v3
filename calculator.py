@@ -21,9 +21,11 @@ def show(get_history_func, save_history_func, get_user_func):
     
     grade_points = {"A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0}
     
-    # Initialize workspace session state for the running courses
+    # Initialize workspace session states
     if "course_queue" not in st.session_state:
         st.session_state.course_queue = []
+    if "last_added_success" not in st.session_state:
+        st.session_state.last_added_success = None
 
     # --- CHRONOLOGICAL SEMESTER TIMELINE MAPPING ---
     semester_map = [
@@ -69,7 +71,6 @@ def show(get_history_func, save_history_func, get_user_func):
         
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
-        # UPDATED: Completely neutral input with no hardcoded code examples
         course_code = st.text_input("Course Code", placeholder="Enter Course Code", key="input_course_code")
         
         col_cu, col_gr = st.columns(2)
@@ -86,8 +87,13 @@ def show(get_history_func, save_history_func, get_user_func):
                 "grade": grade,
                 "qp": credit_units * grade_points[grade]
             })
-            st.success(f"{display_code} added successfully into {current_semester_label} loop!")
+            # Track the success message string state across reruns
+            st.session_state.last_added_success = f"✅ {display_code} added successfully."
             st.rerun()
+
+        # Display persistent success toast block if it matches current state (Image 0c49b5c4 layout)
+        if st.session_state.last_added_success:
+            st.success(st.session_state.last_added_success)
 
         st.divider()
 
@@ -148,6 +154,7 @@ def show(get_history_func, save_history_func, get_user_func):
                     if item["code"] == selected_to_delete:
                         st.session_state.course_queue.pop(idx)
                         break
+                st.session_state.last_added_success = None  # Clear notification banner on deletion shift
                 st.rerun()
                 
             st.divider()
@@ -165,6 +172,7 @@ def show(get_history_func, save_history_func, get_user_func):
                 )
                 st.success(f"{current_semester_label} metrics committed to your ledger successfully!")
                 st.session_state.course_queue = [] 
+                st.session_state.last_added_success = None  # Flush text
                 st.rerun()
 
             # Export options
