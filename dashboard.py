@@ -50,7 +50,10 @@ def show(get_statistics_func, get_user_func):
         with col_metrics:
             if recent_logs and stats and stats[0] > 0:
                 total_calculations, max_cgpa, avg_cgpa = stats
-                latest_cgpa = recent_logs[0][2] 
+                
+                # FIXED: Changed from recent_logs[0][2] to recent_logs[-1][2] 
+                # This guarantees it reads your latest saved chronological standing.
+                latest_cgpa = recent_logs[-1][2] 
                 
                 st.markdown("""
                 <div style="background-color: #1e293b; padding: 20px 22px 5px 22px; border-top-left-radius: 10px; border-top-right-radius: 10px;">
