@@ -26,6 +26,9 @@ def show(get_history_func, save_history_func, get_user_func):
         st.session_state.course_queue = []
     if "last_added_success" not in st.session_state:
         st.session_state.last_added_success = None
+    # Session state to handle the dynamic text clearing mechanism
+    if "course_code_value" not in st.session_state:
+        st.session_state.course_code_value = ""
 
     # --- CHRONOLOGICAL SEMESTER TIMELINE MAPPING ---
     semester_map = [
@@ -71,7 +74,14 @@ def show(get_history_func, save_history_func, get_user_func):
         
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
-        course_code = st.text_input("Course Code", placeholder="Enter Course Code", key="input_course_code")
+        
+        # Using a distinct form key and setting value dynamically from state
+        course_code = st.text_input(
+            "Course Code", 
+            value=st.session_state.course_code_value,
+            placeholder="Enter Course Code", 
+            key="input_course_code"
+        )
         
         col_cu, col_gr = st.columns(2)
         with col_cu:
@@ -87,11 +97,15 @@ def show(get_history_func, save_history_func, get_user_func):
                 "grade": grade,
                 "qp": credit_units * grade_points[grade]
             })
-            # Track the success message string state across reruns
+            
+            # 1. Update the green success toast notification message
             st.session_state.last_added_success = f"✅ {display_code} added successfully."
+            
+            # 2. ERASE KEY: Clear out the state tracker so the input turns up empty on next render
+            st.session_state.course_code_value = ""
             st.rerun()
 
-        # Display persistent success toast block if it matches current state (Image 0c49b5c4 layout)
+        # Display dynamic confirmation banner block
         if st.session_state.last_added_success:
             st.success(st.session_state.last_added_success)
 
@@ -154,7 +168,7 @@ def show(get_history_func, save_history_func, get_user_func):
                     if item["code"] == selected_to_delete:
                         st.session_state.course_queue.pop(idx)
                         break
-                st.session_state.last_added_success = None  # Clear notification banner on deletion shift
+                st.session_state.last_added_success = None  
                 st.rerun()
                 
             st.divider()
@@ -172,7 +186,8 @@ def show(get_history_func, save_history_func, get_user_func):
                 )
                 st.success(f"{current_semester_label} metrics committed to your ledger successfully!")
                 st.session_state.course_queue = [] 
-                st.session_state.last_added_success = None  # Flush text
+                st.session_state.last_added_success = None  
+                st.session_state.course_code_value = ""
                 st.rerun()
 
             # Export options
