@@ -69,8 +69,8 @@ def show(get_history_func, save_history_func, get_user_func):
         
         # --- CURRENT COURSE INPUT PANEL ---
         st.markdown("### Add New Course")
-        # CHANGED: Generic placeholder text suitable for all faculties and departments
-        course_code = st.text_input("Course Code", placeholder="e.g., GST111, GNS101, etc.", key="input_course_code")
+        # UPDATED: Completely neutral input with no hardcoded code examples
+        course_code = st.text_input("Course Code", placeholder="Enter Course Code", key="input_course_code")
         
         col_cu, col_gr = st.columns(2)
         with col_cu:
@@ -79,7 +79,6 @@ def show(get_history_func, save_history_func, get_user_func):
             grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F"], key="input_grade")
             
         if st.button("➕ Add Course", key="add_course_to_queue_btn"):
-            # CHANGED: Fallback value if field is submitted blank
             display_code = course_code.strip().upper() if course_code.strip() else "COURSE CODE"
             st.session_state.course_queue.append({
                 "code": display_code,
