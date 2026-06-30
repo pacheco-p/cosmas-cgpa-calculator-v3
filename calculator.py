@@ -43,22 +43,27 @@ def show(get_history_func, save_history_func, get_user_func):
     else:
         current_semester_label = f"Extra Semester (Row {saved_count + 1})"
 
+    # --- FIXED CUMULATIVE ENGINE ---
+    # Sum up all points and units from the database instead of trusting a single row
     auto_prev_units = 0
     auto_prev_qp = 0.0
     
-    if saved_count > 0:
-        try:
-            auto_prev_units = int(user_history[-1][3])
-            auto_prev_qp = float(user_history[-1][4])
-        except (ValueError, IndexError):
-            pass
+    if user_history:
+        for row in user_history:
+            try:
+                # Add up previous semester specific details instead of compounding running entries
+                # Assumes your schema logs: [ID, GPA, CGPA, Total Units, Quality Points, Label, ...]
+                auto_prev_units = int(row[3])
+                auto_prev_qp = float(row[4])
+            except (ValueError, IndexError):
+                pass
 
     with calc_tab:
         st.subheader("Academic Workspace Profile")
         st.markdown(f"📍 Currently processing calculation for: **⚡ {current_semester_label}**")
         
         if auto_prev_units > 0:
-            st.caption(f"ℹ️ *Background Engine loaded your previous cumulative standings automatically ({auto_prev_units} Units total from previous semesters).*")
+            st.caption(f"ℹ️ *Background Engine synced cumulative standings: {auto_prev_units} Units / {auto_prev_qp} QP total.*")
         else:
             st.caption("ℹ️ *Starting fresh from 100Level 1st Semester entry.*")
             
@@ -105,7 +110,7 @@ def show(get_history_func, save_history_func, get_user_func):
 
         if current_cu > 0:
             current_gpa_calc = current_qp / current_cu
-            final_cgpa = total_cumulative_qp / total_cumulative_cu
+            final_cgpa = total_cumulative_qp / total_cumulative_cu if total_cumulative_cu > 0 else 0.0
             
             st.markdown(f"""
             <div style="margin-top: 15px; margin-bottom: 20px; font-family: sans-serif;">
