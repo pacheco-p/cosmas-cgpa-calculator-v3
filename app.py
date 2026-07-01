@@ -1,10 +1,10 @@
 import streamlit as st
 import database as db
+import auth
 import dashboard
 import calculator
 import profile
 import history
-import sqlite3
 
 # Initialize App Configurations
 st.set_page_config(page_title="Cosmas CGPA Engine", page_icon="🎓", layout="wide")
@@ -56,39 +56,27 @@ if not st.session_state.authenticated:
         
         if submit:
             if auth_mode == "Register/Sign Up":
-                if username and password and confirm_password and fullname and dept:
+                if username and password and confirm_password and fullname and dept and email:
                     if password != confirm_password:
                         st.error("Passwords do not match. Please verify your password entry.")
                     elif len(password) < 6:
                         st.warning("For safety, your password must be at least 6 characters long.")
                     else:
-                        try:
-                            formatted_fullname = fullname.strip().title()
-                            formatted_dept = dept.strip().upper()
-                            
-                            conn = sqlite3.connect("users.db", timeout=20)
-                            cursor = conn.cursor()
-                            cursor.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?)", 
-                                           (username, password, formatted_fullname, email, matric, formatted_dept, level))
-                            conn.commit()
-                            conn.close()
-                            
+                        # Use the secure auth module to register the core user securely
+                        success, message = auth.register(username, email, password)
+                        if success:
+                            # Update the extended profile information right after creation
+                            db.update_user_profile(username, fullname, email, matric, dept, level)
                             st.session_state.auth_mode_index = 0
                             st.success("Registration successful! Redirecting you to login...")
                             st.rerun()
-                        except sqlite3.IntegrityError:
-                            st.error("Username already taken.")
-                        except Exception as e:
-                            st.error(f"An unexpected error occurred: {e}")
+                        else:
+                            st.error(message)
                 else:
                     st.error("Please fill out all required fields.")
             else:
-                conn = sqlite3.connect("users.db", timeout=20)
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
-                user_match = cursor.fetchone()
-                conn.close()
-                if user_match:
+                # Use the secure auth module to verify the password check
+                if auth.login(username, password):
                     st.session_state.authenticated = True
                     st.session_state.username = username
                     st.rerun()
