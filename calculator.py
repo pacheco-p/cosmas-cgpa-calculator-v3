@@ -175,7 +175,7 @@ def show(get_history_func, save_history_func, get_user_func):
             st.divider()
 
             # --- SAVE COMPACT PROGRESSION ROW ACTION ---
-           if st.button("💾 Save Result", use_container_width=True):
+           if st.button("💾 Save Result", use_container_width=True)
     st.balloons()
 
     save_history_func(
