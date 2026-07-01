@@ -29,6 +29,43 @@ def init_db():
     conn.commit()
     conn.close()
 
+# -------------------------------------------------------------
+# AUTH CORE IMPLEMENTATIONS (Fixed Missing Link to auth.py)
+# -------------------------------------------------------------
+
+def get_user(username):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    # Explicitly matching the exact column order expected by your auth.py logic
+    # Index positions: 0=username, 1=email, 2=fullname, 3=password
+    cursor.execute("SELECT username, email, fullname, password FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+def get_email(email):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT email FROM users WHERE email = ?", (email.strip().lower(),))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+def create_user(username, email, hashed_password):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    # Writes the user row to disk and leaves profile metadata empty for later setup
+    cursor.execute("""
+        INSERT INTO users (username, password, email, fullname, matric_no, department, current_level)
+        VALUES (?, ?, ?, '', '', '', '')
+    """, (username.strip(), hashed_password, email.strip().lower()))
+    conn.commit()
+    conn.close()
+
+# -------------------------------------------------------------
+# PROFILE & HISTORY MANAGEMENT SYSTEM
+# -------------------------------------------------------------
+
 def get_user_profile(username):
     conn = sqlite3.connect("users.db")
     conn.row_factory = sqlite3.Row
