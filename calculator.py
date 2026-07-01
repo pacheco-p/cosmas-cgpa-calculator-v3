@@ -172,31 +172,33 @@ def show(get_history_func, save_history_func, get_user_func):
                 st.session_state.last_added_success = None  
                 st.rerun()
                 
-            st.divider()
+         st.divider()
 
             # --- SAVE COMPACT PROGRESSION ROW ACTION ---
-           if st.button("💾 Save Result", use_container_width=True)
-    st.balloons()
+            if st.button("💾 Save Result", use_container_width=True):
+                st.balloons()
 
-    save_history_func(
-        st.session_state.username,
-        current_gpa_calc,
-        final_cgpa,
-        total_cumulative_cu,
-        total_cumulative_qp,
-        current_semester_label
-    )
+                save_history_func(
+                    st.session_state.username,
+                    current_gpa_calc,
+                    final_cgpa,
+                    total_cumulative_cu,
+                    total_cumulative_qp,
+                    current_semester_label
+                )
 
-    st.success(f"{current_semester_label} metrics committed to your ledger successfully!")
+                st.success(
+                    f"{current_semester_label} metrics committed to your ledger successfully!"
+                )
 
-    st.session_state.course_queue = []
-    st.session_state.last_added_success = None
-    st.session_state.course_code_value = ""
+                st.session_state.course_queue = []
+                st.session_state.last_added_success = None
+                st.session_state.course_code_value = ""
 
-    st.rerun()
+                st.rerun()
 
             # Export options
-            csv_file = course_df.to_csv(index=False).encode('utf-8')
+            csv_file = course_df.to_csv(index=False).encode("utf-8")
             st.download_button(
                 label="📥 Download CSV Transcript Snapshot",
                 data=csv_file,
