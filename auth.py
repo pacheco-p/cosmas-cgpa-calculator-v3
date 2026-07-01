@@ -23,7 +23,7 @@ def verify_password(password, hashed):
 # Register User
 # -----------------------------
 def register(username, email, password):
-    username = username.strip()
+    username = username.strip().lower()
     email = email.strip().lower()
 
     if database.get_user(username):
@@ -45,5 +45,6 @@ def login(username, password):
     if user is None:
         return False
 
-    stored_password = user[3]
+    # Password sits cleanly at Index 1 position now
+    stored_password = user[1]
     return verify_password(password, stored_password)
