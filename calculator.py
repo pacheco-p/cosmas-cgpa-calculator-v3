@@ -177,14 +177,14 @@ def show(get_history_func, save_history_func, get_user_func):
             # --- SAVE COMPACT PROGRESSION ROW ACTION ---
             if st.button("💾 Save Result", use_container_width=True):
                 st.balloons()
-                save_history_func(
-                    st.session_state.username,
-                    final_cgpa,
-                    current_gpa_calc,
-                    total_cumulative_cu,
-                    total_cumulative_qp,
-                    current_semester_label
-                )
+               save_history_func(
+    st.session_state.username,
+    current_gpa_calc,      # GPA
+    final_cgpa,            # CGPA
+    total_cumulative_cu,
+    total_cumulative_qp,
+    current_semester_label
+)
                 st.success(f"{current_semester_label} metrics committed to your ledger successfully!")
                 st.session_state.course_queue = [] 
                 st.session_state.last_added_success = None  
