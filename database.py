@@ -122,12 +122,15 @@ def save_history(username, gpa, cgpa, total_units, quality_points, semester_labe
 def get_history(username):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
-   cursor.execute("""
-    SELECT id, gpa, cgpa, total_units, quality_points, semester_label, date_saved
-    FROM history
-    WHERE username = ?
-    ORDER BY id ASC
-""", (username,))
+
+    cursor.execute("""
+        SELECT id, gpa, cgpa, total_units, quality_points,
+               semester_label, date_saved
+        FROM history
+        WHERE username = ?
+        ORDER BY id ASC
+    """, (username,))
+
     rows = cursor.fetchall()
     conn.close()
     return rows
