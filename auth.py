@@ -45,6 +45,6 @@ def login(username, password):
     if user is None:
         return False
 
-    # Password sits cleanly at Index 1 position now
+    # Force Index 1 to grab the password column cleanly
     stored_password = user[1]
     return verify_password(password, stored_password)
